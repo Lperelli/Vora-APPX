@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { VoraLogo } from './vora-logo'
+import { MotionButton } from '@/components/motion-button'
 
 interface WelcomeScreenProps {
   onStart: () => void
@@ -51,18 +52,18 @@ export function WelcomeScreen({ onStart, onSkip }: WelcomeScreenProps) {
               {"We'll filter the most flattering options for your body type, just give us 3 minutes"}
             </p>
             <div className="flex flex-col gap-3">
-              <button
+              <MotionButton
                 onClick={onStart}
                 className="w-full rounded-full border border-foreground/30 bg-transparent text-foreground text-xs tracking-[0.25em] uppercase py-3.5 px-6 hover:bg-foreground/10 transition-colors"
               >
                 Start
-              </button>
-              <button
+              </MotionButton>
+              <MotionButton
                 onClick={onSkip}
                 className="w-full rounded-full border border-foreground/10 bg-transparent text-foreground/50 text-xs tracking-[0.25em] uppercase py-3.5 px-6 hover:bg-foreground/5 transition-colors"
               >
                 Not Now
-              </button>
+              </MotionButton>
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { Clock, Upload } from 'lucide-react'
 import { VoraLogo } from './vora-logo'
+import { MotionButton } from '@/components/motion-button'
 
 interface IntroScreenProps {
   onUploadPhotos: () => void
@@ -28,20 +29,20 @@ export function IntroScreen({ onUploadPhotos, onEnterMeasurements }: IntroScreen
         </div>
 
         <div className="flex flex-col gap-4 w-full max-w-xs">
-          <button
+          <MotionButton
             onClick={onUploadPhotos}
             className="flex items-center justify-center gap-3 w-full rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] text-foreground text-xs tracking-[0.2em] uppercase py-4 px-6 hover:bg-[oklch(0.18_0_0)] transition-colors"
           >
             <Upload className="w-4 h-4" />
             Upload Photos
-          </button>
+          </MotionButton>
           <p className="text-xs text-muted-foreground text-center tracking-widest uppercase">or</p>
-          <button
+          <MotionButton
             onClick={onEnterMeasurements}
             className="flex items-center justify-center gap-3 w-full rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] text-foreground text-xs tracking-[0.2em] uppercase py-4 px-6 hover:bg-[oklch(0.18_0_0)] transition-colors"
           >
             Enter Measurements
-          </button>
+          </MotionButton>
         </div>
       </div>
 

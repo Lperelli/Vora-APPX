@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import Image from 'next/image'
 import { X, Plus, Download } from 'lucide-react'
 import { VoraLogo } from './vora-logo'
+import { MotionButton } from '@/components/motion-button'
 
 interface PhotoUploadScreenProps {
   onSubmit: (files: File[]) => void
@@ -93,7 +94,7 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
           // Empty slot — only show the 4th as "selfie" placeholder style
           const isLastActive = i === photos.length
           return (
-            <button
+            <MotionButton
               key={i}
               onClick={() => isLastActive && fileInputRef.current?.click()}
               className={`relative w-[150px] h-[200px] md:w-[170px] md:h-[220px] rounded-2xl border border-border/30 bg-[oklch(0.12_0_0)] shrink-0 flex items-center justify-center transition-colors ${
@@ -113,7 +114,7 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
                   </div>
                 </>
               )}
-            </button>
+            </MotionButton>
           )
         })}
       </div>
@@ -143,22 +144,24 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
       />
 
       {/* Submit button */}
-      <button
+      <MotionButton
         onClick={handleSubmit}
         disabled={photos.length === 0}
         className="w-full max-w-xs rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] text-foreground text-xs tracking-[0.25em] uppercase py-4 px-6 hover:bg-[oklch(0.20_0_0)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
       >
         Submit!
-      </button>
+      </MotionButton>
 
       {/* Add more photos hint if some exist */}
       {photos.length > 0 && photos.length < 3 && (
-        <button
+        <MotionButton
           onClick={() => fileInputRef.current?.click()}
           className="mt-4 text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
+          whileHoverScale={1.01}
+          whileTapScale={0.99}
         >
           Add more photos ({photos.length}/3)
-        </button>
+        </MotionButton>
       )}
 
       {/* Privacy footer */}

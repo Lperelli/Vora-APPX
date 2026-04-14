@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { Check, X } from 'lucide-react'
 import { VoraLogo } from './vora-logo'
 import type { BodyAnalysis } from '@/app/api/analyze/route'
+import { MotionButton } from '@/components/motion-button'
 
 // ── Silhouette SVG illustrations ───────────────────────────────────────
 function HourglassSvg() {
@@ -206,30 +207,30 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
         )}
 
         {/* ── Unveil style CTA (in-page) ── */}
-        <button
+        <MotionButton
           className="w-full flex items-center justify-center gap-2.5 rounded-full bg-[oklch(0.16_0_0)] border border-white/10 text-foreground text-xs tracking-[0.2em] uppercase py-4 hover:bg-[oklch(0.20_0_0)] transition-colors"
           onClick={handleEmail}
         >
           <span className="w-2 h-2 rounded-full bg-green-400" />
           Unveil Style Recommendations For You
-        </button>
+        </MotionButton>
       </div>
 
       {/* ── Sticky bottom bar ── */}
       <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-white/5 px-4 py-4 z-50">
         <div className="flex gap-3 max-w-sm mx-auto">
-          <button
+          <MotionButton
             onClick={onRedo}
             className="flex-1 rounded-full border border-foreground/20 bg-transparent text-foreground text-xs tracking-[0.2em] uppercase py-3.5 hover:bg-foreground/5 transition-colors"
           >
             Redo
-          </button>
-          <button
+          </MotionButton>
+          <MotionButton
             onClick={handleEmail}
             className="flex-1 rounded-full bg-foreground text-background text-xs tracking-[0.2em] uppercase py-3.5 hover:bg-foreground/90 transition-colors"
           >
             E-Mail Results
-          </button>
+          </MotionButton>
         </div>
       </div>
     </div>
