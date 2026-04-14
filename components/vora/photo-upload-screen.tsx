@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import Image from 'next/image'
+import { motion, useReducedMotion } from 'framer-motion'
 import { X, Plus, Download } from 'lucide-react'
 import { VoraLogo } from './vora-logo'
 
@@ -18,6 +19,7 @@ interface PhotoSlot {
 export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) {
   const [photos, setPhotos] = useState<PhotoSlot[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const prefersReducedMotion = useReducedMotion()
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -52,10 +54,21 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
   const slots = [0, 1, 2]
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center py-10 px-6">
+    <motion.div
+      className="min-h-screen bg-background flex flex-col items-center py-10 px-6"
+      initial={prefersReducedMotion ? false : { opacity: 0 }}
+      animate={prefersReducedMotion ? undefined : { opacity: 1 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+    >
       {/* Header */}
       <header className="w-full flex items-center justify-center mb-12">
-        <VoraLogo />
+        <motion.div
+          initial={prefersReducedMotion ? false : { opacity: 0, y: -10, filter: 'blur(14px)' }}
+          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <VoraLogo />
+        </motion.div>
       </header>
 
       {/* Photo slots */}
@@ -64,9 +77,12 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
           const photo = photos[i]
           if (photo) {
             return (
-              <div
+              <motion.div
                 key={i}
                 className="relative w-[150px] h-[200px] md:w-[170px] md:h-[220px] rounded-2xl overflow-hidden bg-[oklch(0.14_0_0)] shrink-0"
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 14, scale: 0.98, filter: 'blur(14px)' }}
+                animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               >
                 <Image
                   src={photo.preview}
@@ -86,14 +102,14 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
                 <div className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-background/30 flex items-center justify-center">
                   <Download className="w-3 h-3 text-foreground/70" />
                 </div>
-              </div>
+              </motion.div>
             )
           }
 
           // Empty slot — only show the 4th as "selfie" placeholder style
           const isLastActive = i === photos.length
           return (
-            <button
+            <motion.button
               key={i}
               onClick={() => isLastActive && fileInputRef.current?.click()}
               className={`relative w-[150px] h-[200px] md:w-[170px] md:h-[220px] rounded-2xl border border-border/30 bg-[oklch(0.12_0_0)] shrink-0 flex items-center justify-center transition-colors ${
@@ -101,6 +117,11 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
               }`}
               disabled={!isLastActive}
               aria-label={isLastActive ? 'Add photo' : 'Photo slot'}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 14, scale: 0.985, filter: 'blur(14px)' }}
+              animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: prefersReducedMotion ? 0 : 0.08 + i * 0.05 }}
+              whileHover={prefersReducedMotion || !isLastActive ? undefined : { scale: 1.012 }}
+              whileTap={prefersReducedMotion || !isLastActive ? undefined : { scale: 0.99 }}
             >
               {isLastActive && (
                 <>
@@ -113,13 +134,18 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
                   </div>
                 </>
               )}
-            </button>
+            </motion.button>
           )
         })}
       </div>
 
       {/* Instructions */}
-      <div className="text-center max-w-xs mb-10 space-y-4">
+      <motion.div
+        className="text-center max-w-xs mb-10 space-y-4"
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 14, filter: 'blur(14px)' }}
+        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.08 }}
+      >
         <p className="text-[10px] tracking-[0.25em] text-muted-foreground uppercase">Final Review</p>
         <p className="text-sm text-foreground/70 leading-relaxed">
           Now upload up to 3 pictures of your full body. Pictures where you are wearing tighter clothes will work the best for us. Avoid pictures where you have loose clothes.
@@ -130,7 +156,7 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
         <p className="text-sm text-foreground/50 leading-relaxed">
           {'Find good illumination and stand with confidence ;)'}
         </p>
-      </div>
+      </motion.div>
 
       {/* Hidden file input */}
       <input
@@ -143,30 +169,38 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
       />
 
       {/* Submit button */}
-      <button
+      <motion.button
         onClick={handleSubmit}
         disabled={photos.length === 0}
         className="w-full max-w-xs rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] text-foreground text-xs tracking-[0.25em] uppercase py-4 px-6 hover:bg-[oklch(0.20_0_0)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        whileHover={prefersReducedMotion ? undefined : { scale: photos.length === 0 ? 1 : 1.012 }}
+        whileTap={prefersReducedMotion ? undefined : { scale: photos.length === 0 ? 1 : 0.99 }}
       >
         Submit!
-      </button>
+      </motion.button>
 
       {/* Add more photos hint if some exist */}
       {photos.length > 0 && photos.length < 3 && (
-        <button
+        <motion.button
           onClick={() => fileInputRef.current?.click()}
           className="mt-4 text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
+          whileHover={prefersReducedMotion ? undefined : { y: -2 }}
         >
           Add more photos ({photos.length}/3)
-        </button>
+        </motion.button>
       )}
 
       {/* Privacy footer */}
       <footer className="mt-auto pt-10">
-        <p className="text-[10px] tracking-[0.25em] text-muted-foreground uppercase text-center">
+        <motion.p
+          className="text-[10px] tracking-[0.25em] text-muted-foreground uppercase text-center"
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
+          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        >
           Privacy First / Processed Locally, Never Stored
-        </p>
+        </motion.p>
       </footer>
-    </div>
+    </motion.div>
   )
 }

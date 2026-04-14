@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { Check, X } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
 import type { BodyAnalysis } from '@/app/api/analyze/route'
 
@@ -73,6 +74,7 @@ interface ResultsScreenProps {
 
 export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
   const silhouette = SILHOUETTES[analysis.bodyType] ?? SILHOUETTES['rectangle']
+  const prefersReducedMotion = useReducedMotion()
 
   const handleEmail = () => {
     const subject = encodeURIComponent(`My VORA Style Profile — ${analysis.bodyTypeLabel}`)
@@ -83,26 +85,52 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center py-10 px-4 pb-28">
+    <motion.div
+      className="min-h-screen bg-background flex flex-col items-center py-10 px-4 pb-28"
+      initial={prefersReducedMotion ? false : { opacity: 0 }}
+      animate={prefersReducedMotion ? undefined : { opacity: 1 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+    >
       {/* Header */}
       <header className="w-full flex items-center justify-center mb-10">
-        <VoraLogo />
+        <motion.div
+          initial={prefersReducedMotion ? false : { opacity: 0, y: -10, filter: 'blur(14px)' }}
+          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <VoraLogo />
+        </motion.div>
       </header>
 
       {/* Labels */}
-      <div className="text-center mb-6 space-y-1">
+      <motion.div
+        className="text-center mb-6 space-y-1"
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 14, filter: 'blur(14px)' }}
+        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
+      >
         <p className="text-[10px] tracking-[0.3em] text-muted-foreground uppercase">
           Ta-da! Your Body Type
         </p>
         <p className="text-xs text-foreground/45 leading-relaxed">
           {"We've analyzed your measurements and photo. Here's what we discovered."}
         </p>
-      </div>
+      </motion.div>
 
-      <div className="w-full max-w-sm space-y-3">
+      <motion.div
+        className="w-full max-w-sm space-y-3"
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
+        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+        transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.18 }}
+      >
 
         {/* ── Silhouette card ── */}
-        <div className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 flex gap-5">
+        <motion.div
+          className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 flex gap-5"
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 14, scale: 0.985, filter: 'blur(14px)' }}
+          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+        >
           <div className="w-14 h-36 shrink-0 text-foreground/70 mt-1">
             {silhouette}
           </div>
@@ -119,62 +147,100 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
               {analysis.silhouetteDescription}
             </p>
           </div>
-        </div>
+        </motion.div>
 
         {/* ── What works for you ── */}
-        <div className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-3">
+        <motion.div
+          className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-3"
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 14, scale: 0.985, filter: 'blur(14px)' }}
+          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.06 }}
+        >
           <p className="text-[9px] tracking-[0.28em] text-muted-foreground uppercase">
             What Works For You
           </p>
           <ul className="space-y-2.5">
             {analysis.whatWorksForYou.map((tip, i) => (
-              <li key={i} className="flex items-start gap-2.5">
+              <motion.li
+                key={i}
+                className="flex items-start gap-2.5"
+                initial={prefersReducedMotion ? false : { opacity: 0, x: -6 }}
+                animate={prefersReducedMotion ? undefined : { opacity: 1, x: 0 }}
+                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.22 + i * 0.04 }}
+              >
                 <Check className="w-3 h-3 mt-0.5 shrink-0 text-foreground/50" />
                 <span className="text-xs text-foreground/75 leading-relaxed">{tip}</span>
-              </li>
+              </motion.li>
             ))}
           </ul>
-        </div>
+        </motion.div>
 
         {/* ── What to avoid ── */}
         {analysis.whatToAvoid?.length > 0 && (
-          <div className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-3">
+          <motion.div
+            className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-3"
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 14, scale: 0.985, filter: 'blur(14px)' }}
+            animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+            transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.08 }}
+          >
             <p className="text-[9px] tracking-[0.28em] text-muted-foreground uppercase">
               What to Avoid
             </p>
             <ul className="space-y-2.5">
               {analysis.whatToAvoid.map((tip, i) => (
-                <li key={i} className="flex items-start gap-2.5">
+                <motion.li
+                  key={i}
+                  className="flex items-start gap-2.5"
+                  initial={prefersReducedMotion ? false : { opacity: 0, x: -6 }}
+                  animate={prefersReducedMotion ? undefined : { opacity: 1, x: 0 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.24 + i * 0.04 }}
+                >
                   <X className="w-3 h-3 mt-0.5 shrink-0 text-foreground/30" />
                   <span className="text-xs text-foreground/65 leading-relaxed">{tip}</span>
-                </li>
+                </motion.li>
               ))}
             </ul>
-          </div>
+          </motion.div>
         )}
 
         {/* ── Style tips ── */}
         {analysis.styleRecommendations?.length > 0 && (
-          <div className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-3">
+          <motion.div
+            className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-3"
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 14, scale: 0.985, filter: 'blur(14px)' }}
+            animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+            transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
+          >
             <p className="text-[9px] tracking-[0.28em] text-muted-foreground uppercase">
               Style Tips
             </p>
             <ul className="space-y-3">
               {analysis.styleRecommendations.map((rec, i) => (
-                <li key={i} className="flex gap-2.5">
+                <motion.li
+                  key={i}
+                  className="flex gap-2.5"
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
+                  animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.24 + i * 0.04 }}
+                >
                   <span className="text-[9px] tracking-[0.2em] uppercase text-foreground/35 shrink-0 mt-0.5 w-14">
                     {rec.category}
                   </span>
                   <span className="text-xs text-foreground/70 leading-relaxed">{rec.tip}</span>
-                </li>
+                </motion.li>
               ))}
             </ul>
-          </div>
+          </motion.div>
         )}
 
         {/* ── Celebrity references ── */}
         {analysis.celebrities?.length > 0 && (
-          <div className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-4">
+          <motion.div
+            className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-4"
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 14, scale: 0.985, filter: 'blur(14px)' }}
+            animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+            transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
+          >
             <div className="text-center space-y-1">
               <p className="text-[9px] tracking-[0.28em] text-muted-foreground uppercase">
                 See {analysis.bodyTypeLabel} References
@@ -185,7 +251,14 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
             </div>
             <div className="grid grid-cols-4 gap-2">
               {analysis.celebrities.slice(0, 4).map((celeb, i) => (
-                <div key={i} className="relative rounded-xl overflow-hidden aspect-[3/4]">
+                <motion.div
+                  key={i}
+                  className="relative rounded-xl overflow-hidden aspect-[3/4]"
+                  initial={prefersReducedMotion ? false : { opacity: 0, y: 12, scale: 0.985, filter: 'blur(12px)' }}
+                  animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.26 + i * 0.06 }}
+                  whileHover={prefersReducedMotion ? undefined : { y: -2 }}
+                >
                   <Image
                     src={CELEBRITY_IMAGES[i % CELEBRITY_IMAGES.length]}
                     alt={celeb.name}
@@ -199,39 +272,50 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
                       {celeb.name}
                     </p>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* ── Unveil style CTA (in-page) ── */}
-        <button
+        <motion.button
           className="w-full flex items-center justify-center gap-2.5 rounded-full bg-[oklch(0.16_0_0)] border border-white/10 text-foreground text-xs tracking-[0.2em] uppercase py-4 hover:bg-[oklch(0.20_0_0)] transition-colors"
           onClick={handleEmail}
+          whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
+          whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
         >
           <span className="w-2 h-2 rounded-full bg-green-400" />
           Unveil Style Recommendations For You
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       {/* ── Sticky bottom bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-white/5 px-4 py-4 z-50">
+      <motion.div
+        className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-white/5 px-4 py-4 z-50"
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
+        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+        transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+      >
         <div className="flex gap-3 max-w-sm mx-auto">
-          <button
+          <motion.button
             onClick={onRedo}
             className="flex-1 rounded-full border border-foreground/20 bg-transparent text-foreground text-xs tracking-[0.2em] uppercase py-3.5 hover:bg-foreground/5 transition-colors"
+            whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
+            whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
           >
             Redo
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             onClick={handleEmail}
             className="flex-1 rounded-full bg-foreground text-background text-xs tracking-[0.2em] uppercase py-3.5 hover:bg-foreground/90 transition-colors"
+            whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
+            whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
           >
             E-Mail Results
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
