@@ -86,7 +86,7 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center py-10 px-4 pb-28">
       {/* Header */}
-      <header className="w-full flex items-center justify-center mb-10">
+      <header className="w-full max-w-xl px-2 flex items-center justify-center mb-10">
         <VoraLogo />
       </header>
 
@@ -100,11 +100,11 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
         </p>
       </div>
 
-      <div className="w-full max-w-sm space-y-3">
+      <div className="w-full max-w-xl space-y-3">
 
         {/* ── Silhouette card ── */}
-        <div className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 flex gap-5">
-          <div className="w-14 h-36 shrink-0 text-foreground/70 mt-1">
+        <div className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 flex flex-col sm:flex-row gap-5">
+          <div className="w-14 h-36 shrink-0 text-foreground/70 mt-1 self-center sm:self-auto">
             {silhouette}
           </div>
           <div className="flex flex-col justify-center gap-2.5 min-w-0">
@@ -184,7 +184,7 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
                 Celebrities with the same body type as yours. Get inspired
               </p>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {analysis.celebrities.slice(0, 4).map((celeb, i) => (
                 <div key={i} className="relative rounded-xl overflow-hidden aspect-[3/4]">
                   <Image
@@ -192,7 +192,7 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
                     alt={celeb.name}
                     fill
                     className="object-cover object-top"
-                    sizes="80px"
+                    sizes="(max-width: 640px) 40vw, 80px"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-1.5 text-center">
@@ -218,7 +218,7 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
 
       {/* ── Sticky bottom bar ── */}
       <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-white/5 px-4 py-4 z-50">
-        <div className="flex gap-3 max-w-sm mx-auto">
+        <div className="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto">
           <MotionButton
             onClick={onRedo}
             className="flex-1 rounded-full border border-foreground/20 bg-transparent text-foreground text-xs tracking-[0.2em] uppercase py-3.5 hover:bg-foreground/5 transition-colors"

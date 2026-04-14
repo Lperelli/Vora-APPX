@@ -11,15 +11,17 @@ interface IntroScreenProps {
 
 export function IntroScreen({ onUploadPhotos, onEnterMeasurements }: IntroScreenProps) {
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-between py-12 px-6">
-      <VoraLogo />
+    <div className="min-h-screen bg-background flex flex-col py-10 sm:py-12 px-5 sm:px-6">
+      <header className="w-full flex items-center justify-center">
+        <VoraLogo />
+      </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center text-center max-w-md w-full gap-10">
+      <div className="flex-1 flex flex-col items-center justify-center text-center w-full max-w-md mx-auto gap-10">
         <div className="space-y-5">
-          <h2 className="text-xl font-semibold tracking-[0.12em] uppercase text-foreground">
+          <h2 className="text-lg sm:text-xl font-semibold tracking-[0.12em] uppercase text-foreground">
             We know online fitting is a struggle.
           </h2>
-          <p className="text-sm text-foreground/70 leading-relaxed">
+          <p className="text-sm text-foreground/70 leading-relaxed max-w-[42ch] mx-auto">
             {"That's why we make the science of styling available to everyone. Try VORA and get personalized outfits that will flatter you the most according to your body type."}
           </p>
           <div className="flex items-center justify-center gap-2 text-foreground/60">
@@ -46,9 +48,11 @@ export function IntroScreen({ onUploadPhotos, onEnterMeasurements }: IntroScreen
         </div>
       </div>
 
-      <p className="text-[10px] tracking-[0.25em] text-muted-foreground uppercase">
-        Privacy First / Processed Locally, Never Stored
-      </p>
+      <footer className="pt-10 text-center">
+        <p className="text-[10px] tracking-[0.25em] text-muted-foreground uppercase">
+          Privacy First / Processed Locally, Never Stored
+        </p>
+      </footer>
     </div>
   )
 }
