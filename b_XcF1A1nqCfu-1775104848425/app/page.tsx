@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { WelcomeScreen } from '@/components/vora/welcome-screen'
 import { IntroScreen } from '@/components/vora/intro-screen'
 import { OverwhelmedScreen } from '@/components/vora/overwhelmed-screen'
@@ -8,6 +9,7 @@ import { PhotoUploadScreen } from '@/components/vora/photo-upload-screen'
 import { ProcessingScreen } from '@/components/vora/processing-screen'
 import { ResultsScreen } from '@/components/vora/results-screen'
 import type { BodyAnalysis } from '@/app/api/analyze/route'
+import { premiumPageTransition } from '@/lib/motion'
 
 type Step =
   | 'welcome'    // Screen 1: photo grid + "OVERWHELMED?" modal
@@ -21,6 +23,7 @@ export default function VoraApp() {
   const [step, setStep] = useState<Step>('welcome')
   const [analysisResult, setAnalysisResult] = useState<BodyAnalysis | null>(null)
   const [isAnalysisComplete, setIsAnalysisComplete] = useState(false)
+  const shouldReduceMotion = useReducedMotion()
 
   const handleAnalyze = useCallback(async (files: File[]) => {
     setStep('processing')
@@ -91,49 +94,60 @@ export default function VoraApp() {
 
   return (
     <main className="min-h-screen bg-background">
-      {step === 'welcome' && (
-        <WelcomeScreen
-          onStart={() => setStep('intro')}
-          onSkip={() => setStep('upload')}
-        />
-      )}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={step}
+          variants={shouldReduceMotion ? undefined : premiumPageTransition}
+          initial={shouldReduceMotion ? { opacity: 0 } : 'hidden'}
+          animate={shouldReduceMotion ? { opacity: 1 } : 'visible'}
+          exit={shouldReduceMotion ? { opacity: 0 } : 'exit'}
+          transition={shouldReduceMotion ? { duration: 0.12 } : undefined}
+        >
+          {step === 'welcome' && (
+            <WelcomeScreen
+              onStart={() => setStep('intro')}
+              onSkip={() => setStep('upload')}
+            />
+          )}
 
-      {step === 'intro' && (
-        <IntroScreen
-          onUploadPhotos={() => setStep('upload')}
-          onEnterMeasurements={() => setStep('overwhelmed')}
-        />
-      )}
+          {step === 'intro' && (
+            <IntroScreen
+              onUploadPhotos={() => setStep('upload')}
+              onEnterMeasurements={() => setStep('overwhelmed')}
+            />
+          )}
 
-      {step === 'overwhelmed' && (
-        <OverwhelmedScreen
-          onUploadPhotos={() => setStep('upload')}
-          onFillQuiz={() => setStep('upload')}
-        />
-      )}
+          {step === 'overwhelmed' && (
+            <OverwhelmedScreen
+              onUploadPhotos={() => setStep('upload')}
+              onFillQuiz={() => setStep('upload')}
+            />
+          )}
 
-      {step === 'upload' && (
-        <PhotoUploadScreen
-          onSubmit={handleAnalyze}
-          onBack={() => setStep('intro')}
-        />
-      )}
+          {step === 'upload' && (
+            <PhotoUploadScreen
+              onSubmit={handleAnalyze}
+              onBack={() => setStep('intro')}
+            />
+          )}
 
-      {step === 'processing' && (
-        <ProcessingScreen
-          isComplete={isAnalysisComplete}
-          onComplete={() => {
-            if (analysisResult) setStep('results')
-          }}
-        />
-      )}
+          {step === 'processing' && (
+            <ProcessingScreen
+              isComplete={isAnalysisComplete}
+              onComplete={() => {
+                if (analysisResult) setStep('results')
+              }}
+            />
+          )}
 
-      {step === 'results' && analysisResult && (
-        <ResultsScreen
-          analysis={analysisResult}
-          onRedo={handleRedo}
-        />
-      )}
+          {step === 'results' && analysisResult && (
+            <ResultsScreen
+              analysis={analysisResult}
+              onRedo={handleRedo}
+            />
+          )}
+        </motion.div>
+      </AnimatePresence>
     </main>
   )
 }
