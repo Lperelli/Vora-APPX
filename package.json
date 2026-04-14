@@ -1,0 +1,11 @@
+{
+  "name": "vora-repo",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev": "pnpm -C b_XcF1A1nqCfu-1775104848425 dev",
+    "build": "pnpm -C b_XcF1A1nqCfu-1775104848425 build",
+    "start": "pnpm -C b_XcF1A1nqCfu-1775104848425 start",
+    "lint": "pnpm -C b_XcF1A1nqCfu-1775104848425 lint"
+  }
+}
