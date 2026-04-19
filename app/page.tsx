@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'framer-motion'
 import { WelcomeScreen } from '@/components/vora/welcome-screen'
 import { IntroScreen } from '@/components/vora/intro-screen'
-import { OverwhelmedScreen } from '@/components/vora/overwhelmed-screen'
 import { NotNowScreen } from '@/components/vora/not-now-screen'
 import { PhotoUploadScreen } from '@/components/vora/photo-upload-screen'
+import { MeasurementsQuizScreen } from '@/components/vora/measurements-quiz-screen'
 import { ProcessingScreen } from '@/components/vora/processing-screen'
 import { ResultsScreen } from '@/components/vora/results-screen'
 import { VoraLogo } from '@/components/vora/vora-logo'
@@ -17,7 +17,7 @@ type Step =
   | 'welcome'    // Screen 1: photo grid + "OVERWHELMED?" modal
   | 'notNow'     // After "Not now": full-screen choice (Figma Step-01)
   | 'intro'      // Screen 2: "WE KNOW ONLINE FITTING IS A STRUGGLE"
-  | 'overwhelmed' // Screen 3: "OVERWHELMED?" standalone
+  | 'measurements' // Measurements quiz (Enter Measurements)
   | 'upload'     // Screen 4: photo upload
   | 'processing' // Screen 5: analyzing animation
   | 'results'    // Screen 6: body type results
@@ -102,6 +102,54 @@ export default function VoraApp() {
       setIsAnalysisComplete(true)
     }
   }, [])
+
+  const handleMeasurementAnalyze = useCallback(
+    async (payload: { bust: number; waist: number; hips: number; height: number }) => {
+      setStep('processing')
+      setIsAnalysisComplete(false)
+
+      const started = typeof performance !== 'undefined' ? performance.now() : Date.now()
+      const MIN_MS = 2200
+      const waitRemaining = async () => {
+        const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
+        const elapsed = now - started
+        if (elapsed < MIN_MS) {
+          await new Promise((r) => setTimeout(r, MIN_MS - elapsed))
+        }
+      }
+
+      try {
+        const response = await fetch('/api/analyze-measurements', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+
+        if (!response.ok) {
+          let message = `HTTP ${response.status}`
+          try {
+            const errBody = (await response.json()) as { error?: string; detail?: string }
+            if (errBody?.error) message = `${errBody.error}${errBody.detail ? ` — ${errBody.detail}` : ''}`
+            else if (errBody?.detail) message = errBody.detail
+          } catch {
+            /* ignore */
+          }
+          console.error('[vora] /api/analyze-measurements failed:', message)
+          throw new Error(message)
+        }
+
+        const data = await response.json()
+        await waitRemaining()
+        setAnalysisResult(data.analysis)
+        setIsAnalysisComplete(true)
+      } catch (error) {
+        console.error('[vora] Measurement analysis failed:', error instanceof Error ? error.message : error)
+        setAnalysisResult(buildAnalysisFromBodyType('rectangle', 'low'))
+        setIsAnalysisComplete(true)
+      }
+    },
+    []
+  )
 
   const handleRedo = useCallback(() => {
     setStep('welcome')
@@ -201,14 +249,14 @@ export default function VoraApp() {
             {step === 'intro' && (
               <IntroScreen
                 onUploadPhotos={() => goToUpload('intro')}
-                onEnterMeasurements={() => setStep('overwhelmed')}
+                onEnterMeasurements={() => setStep('measurements')}
               />
             )}
 
-            {step === 'overwhelmed' && (
-              <OverwhelmedScreen
-                onUploadPhotos={() => goToUpload('overwhelmed')}
-                onFillQuiz={() => goToUpload('overwhelmed')}
+            {step === 'measurements' && (
+              <MeasurementsQuizScreen
+                onBack={() => setStep('intro')}
+                onSubmitMeasurements={handleMeasurementAnalyze}
               />
             )}
 

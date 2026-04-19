@@ -10,7 +10,7 @@ export const BODY_TYPE_IDS = [
 
 export type BodyTypeId = (typeof BODY_TYPE_IDS)[number]
 
-const bodyTypeEnum = z.enum(BODY_TYPE_IDS as unknown as [BodyTypeId, ...BodyTypeId[]])
+export const bodyTypeEnum = z.enum(BODY_TYPE_IDS as unknown as [BodyTypeId, ...BodyTypeId[]])
 
 export const CelebrityRefSchema = z.object({
   name: z.string(),
@@ -32,6 +32,9 @@ export const BodyAnalysisSchema = z.object({
     })
   ),
   confidence: z.string(),
+  /** Present when analysis used typed measurements + Groq copy. */
+  measurementAiStyling: z.string().optional(),
+  analysisSource: z.enum(['photo', 'measurement']).optional(),
 })
 
 export type BodyAnalysis = z.infer<typeof BodyAnalysisSchema>

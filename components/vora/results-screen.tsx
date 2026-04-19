@@ -113,7 +113,9 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
           Ta-da! Your Body Type
         </p>
         <p className="text-xs text-foreground/45 leading-relaxed">
-          {"We've analyzed your measurements and photo. Here's what we discovered."}
+          {analysis.analysisSource === 'measurement'
+            ? "We've analyzed your measurements. Here's what we discovered."
+            : "We've analyzed your measurements and photo. Here's what we discovered."}
         </p>
       </motion.div>
 
@@ -148,6 +150,18 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
             </p>
           </div>
         </motion.div>
+
+        {analysis.measurementAiStyling && (
+          <motion.div
+            className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-2"
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 12, filter: 'blur(12px)' }}
+            animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.04 }}
+          >
+            <p className="text-[9px] tracking-[0.28em] text-muted-foreground uppercase">Your AI stylist</p>
+            <p className="text-xs text-foreground/70 leading-relaxed">{analysis.measurementAiStyling}</p>
+          </motion.div>
+        )}
 
         {/* ── What works for you ── */}
         <motion.div

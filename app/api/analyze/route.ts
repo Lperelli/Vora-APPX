@@ -1,5 +1,6 @@
 import { type BodyAnalysis, buildAnalysisFromBodyType } from '@/lib/body-type-analysis'
 import { classifyBodyWithGroq } from '@/lib/groq-classify'
+import { resolveGroqApiKey } from '@/lib/groq-env'
 
 export type { BodyAnalysis } from '@/lib/body-type-analysis'
 
@@ -9,10 +10,6 @@ const DEFAULT_GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'
 
 /** Allow time for Groq vision on cold starts (e.g. Vercel). */
 export const maxDuration = 120
-
-function resolveGroqApiKey(): string {
-  return (process.env.GROQ_API_KEY ?? process.env.GROQ_KEY ?? '').trim()
-}
 
 export async function GET() {
   const key = resolveGroqApiKey()
