@@ -69,14 +69,23 @@ export default function VoraApp() {
       })
 
       if (!response.ok) {
-        throw new Error('Analysis failed')
+        let message = `HTTP ${response.status}`
+        try {
+          const errBody = (await response.json()) as { error?: string; detail?: string }
+          if (errBody?.error) message = `${errBody.error}${errBody.detail ? ` — ${errBody.detail}` : ''}`
+          else if (errBody?.detail) message = errBody.detail
+        } catch {
+          /* ignore non-JSON error bodies */
+        }
+        console.error('[vora] /api/analyze failed:', message)
+        throw new Error(message)
       }
 
       const data = await response.json()
       setAnalysisResult(data.analysis)
       setIsAnalysisComplete(true)
     } catch (error) {
-      console.error('[vora] Analysis failed:', error)
+      console.error('[vora] Analysis failed:', error instanceof Error ? error.message : error)
       setAnalysisResult(buildAnalysisFromBodyType('rectangle', 'low'))
       setIsAnalysisComplete(true)
     }

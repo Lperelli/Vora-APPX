@@ -34,7 +34,8 @@ export async function POST(req: Request) {
       return Response.json(
         {
           error: 'Groq is not configured.',
-          detail: 'Set GROQ_API_KEY in .env.local (see .env.example).',
+          detail:
+            'Add GROQ_API_KEY: locally in .env.local, or on Vercel under Project → Settings → Environment Variables (Production & Preview), then redeploy.',
         },
         { status: 503 }
       )
