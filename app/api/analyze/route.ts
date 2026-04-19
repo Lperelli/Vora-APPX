@@ -1,41 +1,41 @@
-import { generateText, Output } from 'ai'
-import { createGroq } from '@ai-sdk/groq'
-import {
-  AiBodyClassificationSchema,
-  type BodyAnalysis,
-  type BodyTypeId,
-  buildAnalysisFromBodyType,
-} from '@/lib/body-type-analysis'
+import { type BodyAnalysis, buildAnalysisFromBodyType } from '@/lib/body-type-analysis'
+import { classifyBodyWithGroq } from '@/lib/groq-classify'
 
 export type { BodyAnalysis } from '@/lib/body-type-analysis'
 
+export const runtime = 'nodejs'
+
 const DEFAULT_GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'
 
-/** Allow time for Groq vision + structured output on cold starts (e.g. Vercel). */
+/** Allow time for Groq vision on cold starts (e.g. Vercel). */
 export const maxDuration = 120
 
-const SYSTEM_PROMPT = `You are VORA's vision classifier. Your ONLY job is to look at the photo(s) and choose exactly ONE body-type label from this closed list (use the exact slug value for bodyType):
+function resolveGroqApiKey(): string {
+  return (process.env.GROQ_API_KEY ?? process.env.GROQ_KEY ?? '').trim()
+}
 
-- hourglass — bust and hips roughly balanced, waist clearly narrower; defined curves
-- rectangle — shoulders, waist, and hips similar width; straight silhouette
-- pear — hips/thighs wider than shoulders; more volume below the waist
-- apple — fuller midsection relative to hips; weight carried more around the torso
-- inverted-triangle — shoulders/bust noticeably wider than hips; strong upper body
-
-RULES:
-- Pick the single closest match. Never refuse or ask questions.
-- confidence: "high" if full body and proportions are clear, "medium" if partial or angled, "low" if very unclear — still pick the best label.
-- Do NOT invent celebrities, styling tips, or long text. Output ONLY the two fields in the schema.`
+export async function GET() {
+  const key = resolveGroqApiKey()
+  return Response.json({
+    ok: true,
+    groqApiKeyPresent: Boolean(key),
+    runtime: 'nodejs',
+    modelDefault: DEFAULT_GROQ_VISION_MODEL,
+    hint: key
+      ? null
+      : 'Set GROQ_API_KEY in Vercel → Settings → Environment Variables (Production + Preview), redeploy, then POST /api/analyze with photos.',
+  })
+}
 
 export async function POST(req: Request) {
   try {
-    const apiKey = process.env.GROQ_API_KEY?.trim()
+    const apiKey = resolveGroqApiKey()
     if (!apiKey) {
       return Response.json(
         {
           error: 'Groq is not configured.',
           detail:
-            'Add GROQ_API_KEY: locally in .env.local, or on Vercel under Project → Settings → Environment Variables (Production & Preview), then redeploy.',
+            'Set GROQ_API_KEY in Vercel (or .env.local). Optional alias: GROQ_KEY. Redeploy after saving.',
         },
         { status: 503 }
       )
@@ -45,47 +45,32 @@ export async function POST(req: Request) {
       process.env.GROQ_MODEL?.trim() || process.env.GROQ_VISION_MODEL?.trim() || DEFAULT_GROQ_VISION_MODEL
 
     const formData = await req.formData()
-    const imageContents: { type: 'image'; image: Uint8Array; mimeType: string }[] = []
+    const images: { mimeType: string; base64: string }[] = []
 
     for (let i = 0; i < 3; i++) {
       const file = formData.get(`photo_${i}`) as File | null
       if (file) {
         const bytes = await file.arrayBuffer()
-        const mimeType = (file.type || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/webp'
-        imageContents.push({ type: 'image', image: new Uint8Array(bytes), mimeType })
+        const mimeType = file.type || 'image/jpeg'
+        const base64 = Buffer.from(bytes).toString('base64')
+        images.push({ mimeType, base64 })
       }
     }
 
-    if (imageContents.length === 0) {
+    if (images.length === 0) {
       return Response.json({ error: 'No images provided' }, { status: 400 })
     }
 
-    const groq = createGroq({ apiKey })
-
-    const result = await generateText({
-      model: groq(modelId),
-      experimental_output: Output.object({ schema: AiBodyClassificationSchema }),
-      system: SYSTEM_PROMPT,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            ...imageContents,
-            {
-              type: 'text',
-              text: 'Classify this person’s body type for fashion styling. Return only bodyType and confidence per instructions.',
-            },
-          ],
-        },
-      ],
+    const classification = await classifyBodyWithGroq({
+      apiKey,
+      modelId,
+      images,
     })
 
-    const raw = result.experimental_output
-    const parsed = AiBodyClassificationSchema.safeParse(raw)
-    const bodyType: BodyTypeId = parsed.success ? parsed.data.bodyType : 'rectangle'
-    const confidence = parsed.success ? parsed.data.confidence : 'low'
-
-    const analysis: BodyAnalysis = buildAnalysisFromBodyType(bodyType, confidence)
+    const analysis: BodyAnalysis = buildAnalysisFromBodyType(
+      classification.bodyType,
+      classification.confidence
+    )
 
     return Response.json({ analysis })
   } catch (error) {

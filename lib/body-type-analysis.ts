@@ -282,3 +282,9 @@ export const AiBodyClassificationSchema = z.object({
 })
 
 export type AiBodyClassification = z.infer<typeof AiBodyClassificationSchema>
+
+/** Strict parse for Groq JSON responses (invalid → parse error, no silent defaults). */
+export const AiBodyClassificationGroqSchema = z.object({
+  bodyType: z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase().trim() : v), bodyTypeEnum),
+  confidence: z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase().trim() : v), z.enum(['high', 'medium', 'low'])),
+})

@@ -57,6 +57,17 @@ export default function VoraApp() {
     setStep('processing')
     setIsAnalysisComplete(false)
 
+    const started = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    const MIN_MS = 2200
+
+    const waitRemaining = async () => {
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
+      const elapsed = now - started
+      if (elapsed < MIN_MS) {
+        await new Promise((r) => setTimeout(r, MIN_MS - elapsed))
+      }
+    }
+
     try {
       const formData = new FormData()
       files.forEach((file, i) => {
@@ -82,6 +93,7 @@ export default function VoraApp() {
       }
 
       const data = await response.json()
+      await waitRemaining()
       setAnalysisResult(data.analysis)
       setIsAnalysisComplete(true)
     } catch (error) {
