@@ -14,14 +14,7 @@ export function WelcomeScreen({ onStart, onSkip }: WelcomeScreenProps) {
     <div className="min-h-screen bg-white text-black flex flex-col">
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-6">
-        <motion.span
-          className="text-xs tracking-[0.2em] text-black/60 uppercase"
-          initial={prefersReducedMotion ? false : { opacity: 0, y: -6 }}
-          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        >
-          Return
-        </motion.span>
+        <span className="w-16 shrink-0" aria-hidden />
         <motion.div
           initial={prefersReducedMotion ? false : { opacity: 0, y: -8, filter: 'blur(14px)' }}
           animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}

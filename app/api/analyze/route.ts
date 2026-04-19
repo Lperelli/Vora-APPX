@@ -1,82 +1,57 @@
 import { generateText, Output } from 'ai'
 import { createGroq } from '@ai-sdk/groq'
-import { z } from 'zod'
+import {
+  AiBodyClassificationSchema,
+  type BodyAnalysis,
+  type BodyTypeId,
+  buildAnalysisFromBodyType,
+} from '@/lib/body-type-analysis'
 
-const groq = createGroq({
-  apiKey: process.env.GROQ_API_KEY,
-})
+export type { BodyAnalysis } from '@/lib/body-type-analysis'
 
-const BodyAnalysisSchema = z.object({
-  bodyType: z.enum(['hourglass', 'rectangle', 'pear', 'apple', 'inverted-triangle']),
-  bodyTypeLabel: z.string(),
-  silhouetteDescription: z.string(),
-  whatWorksForYou: z.array(z.string()),
-  whatToAvoid: z.array(z.string()),
-  celebrities: z.array(
-    z.object({
-      name: z.string(),
-      reason: z.string(),
-    })
-  ),
-  styleRecommendations: z.array(
-    z.object({
-      category: z.string(),
-      tip: z.string(),
-    })
-  ),
-  confidence: z.string(),
-})
+const DEFAULT_GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct'
 
-export type BodyAnalysis = z.infer<typeof BodyAnalysisSchema>
+/** Allow time for Groq vision + structured output on cold starts (e.g. Vercel). */
+export const maxDuration = 120
 
-const SYSTEM_PROMPT = `You are VORA, a fashion body-type classifier. You ONLY classify body types and give style recommendations. You NEVER discuss any other topic, ask questions, or refuse to analyze.
+const SYSTEM_PROMPT = `You are VORA's vision classifier. Your ONLY job is to look at the photo(s) and choose exactly ONE body-type label from this closed list (use the exact slug value for bodyType):
 
-TASK: Look at the full-body photo(s) and classify the body type into exactly one of these five types based on the proportions of shoulders, waist, and hips:
-- hourglass: bust and hips roughly equal, waist clearly narrower — defined curves
-- rectangle: shoulders, waist, and hips roughly the same width — straight silhouette
-- pear: hips and thighs noticeably wider than shoulders — volume below the waist
-- apple: midsection and waist wider than bust and hips — volume in the middle
-- inverted-triangle: shoulders and bust noticeably wider than hips — broad top, narrow bottom
-
-OUTPUT REQUIREMENTS (you must always return valid JSON with ALL these fields):
-{
-  "bodyType": "<one of the five enum values>",
-  "bodyTypeLabel": "<e.g. Hourglass, Rectangle, Pear, Apple, Inverted Triangle>",
-  "silhouetteDescription": "<2-3 warm, empowering sentences specific to this body shape>",
-  "whatWorksForYou": ["<tip 1>", "<tip 2>", "<tip 3>", "<tip 4>"],
-  "whatToAvoid": ["<thing 1>", "<thing 2>", "<thing 3>"],
-  "celebrities": [
-    {"name": "<real celebrity>", "reason": "<why they share this body type>"},
-    ... 4 total
-  ],
-  "styleRecommendations": [
-    {"category": "Tops", "tip": "<specific tip>"},
-    {"category": "Bottoms", "tip": "<specific tip>"},
-    {"category": "Dresses", "tip": "<specific tip>"},
-    {"category": "Outerwear", "tip": "<specific tip>"},
-    {"category": "Accessories", "tip": "<specific tip>"}
-  ],
-  "confidence": "<high | medium | low>"
-}
+- hourglass — bust and hips roughly balanced, waist clearly narrower; defined curves
+- rectangle — shoulders, waist, and hips similar width; straight silhouette
+- pear — hips/thighs wider than shoulders; more volume below the waist
+- apple — fuller midsection relative to hips; weight carried more around the torso
+- inverted-triangle — shoulders/bust noticeably wider than hips; strong upper body
 
 RULES:
-- ALWAYS pick the closest matching type — never say "unclear" or refuse
-- confidence = "high" if full body clearly visible, "medium" if partial, "low" if very unclear
-- Never add any text outside the JSON structure
-- If photo quality is poor, still make your best determination`
+- Pick the single closest match. Never refuse or ask questions.
+- confidence: "high" if full body and proportions are clear, "medium" if partial or angled, "low" if very unclear — still pick the best label.
+- Do NOT invent celebrities, styling tips, or long text. Output ONLY the two fields in the schema.`
 
 export async function POST(req: Request) {
   try {
+    const apiKey = process.env.GROQ_API_KEY?.trim()
+    if (!apiKey) {
+      return Response.json(
+        {
+          error: 'Groq is not configured.',
+          detail: 'Set GROQ_API_KEY in .env.local (see .env.example).',
+        },
+        { status: 503 }
+      )
+    }
+
+    const modelId =
+      process.env.GROQ_MODEL?.trim() || process.env.GROQ_VISION_MODEL?.trim() || DEFAULT_GROQ_VISION_MODEL
+
     const formData = await req.formData()
-    const imageContents: { type: 'image'; image: string; mimeType: string }[] = []
+    const imageContents: { type: 'image'; image: Uint8Array; mimeType: string }[] = []
 
     for (let i = 0; i < 3; i++) {
       const file = formData.get(`photo_${i}`) as File | null
       if (file) {
         const bytes = await file.arrayBuffer()
-        const base64 = Buffer.from(bytes).toString('base64')
         const mimeType = (file.type || 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/webp'
-        imageContents.push({ type: 'image', image: base64, mimeType })
+        imageContents.push({ type: 'image', image: new Uint8Array(bytes), mimeType })
       }
     }
 
@@ -84,10 +59,11 @@ export async function POST(req: Request) {
       return Response.json({ error: 'No images provided' }, { status: 400 })
     }
 
+    const groq = createGroq({ apiKey })
+
     const result = await generateText({
-      // llama-4-scout-17b-16e-instruct is the free vision model on Groq
-      model: groq('meta-llama/llama-4-scout-17b-16e-instruct'),
-      experimental_output: Output.object({ schema: BodyAnalysisSchema }),
+      model: groq(modelId),
+      experimental_output: Output.object({ schema: AiBodyClassificationSchema }),
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -96,14 +72,21 @@ export async function POST(req: Request) {
             ...imageContents,
             {
               type: 'text',
-              text: 'Analyze the body type in this photo and return the complete JSON styling profile. Output only valid JSON.',
+              text: 'Classify this person’s body type for fashion styling. Return only bodyType and confidence per instructions.',
             },
           ],
         },
       ],
     })
 
-    return Response.json({ analysis: result.experimental_output })
+    const raw = result.experimental_output
+    const parsed = AiBodyClassificationSchema.safeParse(raw)
+    const bodyType: BodyTypeId = parsed.success ? parsed.data.bodyType : 'rectangle'
+    const confidence = parsed.success ? parsed.data.confidence : 'low'
+
+    const analysis: BodyAnalysis = buildAnalysisFromBodyType(bodyType, confidence)
+
+    return Response.json({ analysis })
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     console.error('[vora] Analysis error:', msg)
@@ -113,4 +96,3 @@ export async function POST(req: Request) {
     )
   }
 }
-

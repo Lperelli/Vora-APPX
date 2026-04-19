@@ -60,7 +60,7 @@ const SILHOUETTES: Record<string, React.ReactNode> = {
   'inverted-triangle': <InvertedTriangleSvg />,
 }
 
-const CELEBRITY_IMAGES = [
+const CELEBRITY_FALLBACK_IMAGES = [
   '/celebrities/celebrity-1.jpg',
   '/celebrities/celebrity-2.jpg',
   '/celebrities/celebrity-3.jpg',
@@ -260,7 +260,7 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
                   whileHover={prefersReducedMotion ? undefined : { y: -2 }}
                 >
                   <Image
-                    src={CELEBRITY_IMAGES[i % CELEBRITY_IMAGES.length]}
+                    src={celeb.imageSrc ?? CELEBRITY_FALLBACK_IMAGES[i % CELEBRITY_FALLBACK_IMAGES.length]}
                     alt={celeb.name}
                     fill
                     className="object-cover object-top"
