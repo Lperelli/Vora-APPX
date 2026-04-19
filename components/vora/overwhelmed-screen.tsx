@@ -23,7 +23,7 @@ export function OverwhelmedScreen({ onUploadPhotos, onFillQuiz }: OverwhelmedScr
         animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       >
-        <VoraLogo className="text-6xl" />
+        <VoraLogo className="h-14 w-auto sm:h-16 md:h-[4.5rem]" />
       </motion.div>
 
       <motion.div

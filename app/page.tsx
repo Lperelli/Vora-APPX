@@ -25,6 +25,7 @@ type Step =
 export default function VoraApp() {
   const [step, setStep] = useState<Step>('welcome')
   const [uploadBackStep, setUploadBackStep] = useState<Step>('intro')
+  const [processingReturnStep, setProcessingReturnStep] = useState<Step>('upload')
   const [analysisResult, setAnalysisResult] = useState<BodyAnalysis | null>(null)
   const [isAnalysisComplete, setIsAnalysisComplete] = useState(false)
   const prefersReducedMotion = useReducedMotion()
@@ -54,6 +55,7 @@ export default function VoraApp() {
   )
 
   const handleAnalyze = useCallback(async (files: File[]) => {
+    setProcessingReturnStep('upload')
     setStep('processing')
     setIsAnalysisComplete(false)
 
@@ -105,6 +107,7 @@ export default function VoraApp() {
 
   const handleMeasurementAnalyze = useCallback(
     async (payload: { bust: number; waist: number; hips: number; height: number }) => {
+      setProcessingReturnStep('measurements')
       setStep('processing')
       setIsAnalysisComplete(false)
 
@@ -187,7 +190,7 @@ export default function VoraApp() {
                   transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
                   className="flex flex-col items-center gap-6"
                 >
-                  <VoraLogo />
+                  <VoraLogo priority className="h-10 w-auto sm:h-12 md:h-14" />
 
                   <div className="w-full max-w-[260px]">
                     {/* Track */}
@@ -241,6 +244,7 @@ export default function VoraApp() {
 
             {step === 'notNow' && (
               <NotNowScreen
+                onBack={() => setStep('welcome')}
                 onUploadPhotos={() => goToUpload('notNow')}
                 onFillQuiz={() => setStep('intro')}
               />
@@ -248,6 +252,7 @@ export default function VoraApp() {
 
             {step === 'intro' && (
               <IntroScreen
+                onBack={() => setStep('welcome')}
                 onUploadPhotos={() => goToUpload('intro')}
                 onEnterMeasurements={() => setStep('measurements')}
               />
@@ -270,6 +275,11 @@ export default function VoraApp() {
             {step === 'processing' && (
               <ProcessingScreen
                 isComplete={isAnalysisComplete}
+                source={processingReturnStep === 'measurements' ? 'measurement' : 'photo'}
+                onReturn={() => {
+                  setIsAnalysisComplete(false)
+                  setStep(processingReturnStep)
+                }}
                 onComplete={() => {
                   if (analysisResult) setStep('results')
                 }}

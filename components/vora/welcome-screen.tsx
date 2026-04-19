@@ -11,9 +11,9 @@ interface WelcomeScreenProps {
 export function WelcomeScreen({ onStart, onSkip }: WelcomeScreenProps) {
   const prefersReducedMotion = useReducedMotion()
   return (
-    <div className="min-h-screen bg-white text-black flex flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between px-8 py-6">
+    <div className="min-h-[100dvh] bg-white text-black flex flex-col">
+      {/* Header — no RETURN on home (design) */}
+      <header className="flex items-center justify-between px-4 sm:px-8 py-5 sm:py-6 pt-[max(1.25rem,env(safe-area-inset-top))]">
         <span className="w-16 shrink-0" aria-hidden />
         <motion.div
           initial={prefersReducedMotion ? false : { opacity: 0, y: -8, filter: 'blur(14px)' }}

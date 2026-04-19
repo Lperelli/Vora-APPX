@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { Check, X } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
+import { VoraScreenHeader } from './screen-return-button'
 import type { BodyAnalysis } from '@/app/api/analyze/route'
 
 // ── Silhouette SVG illustrations ───────────────────────────────────────
@@ -86,25 +87,23 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
 
   return (
     <motion.div
-      className="min-h-screen bg-background flex flex-col items-center py-10 px-4 pb-28"
+      className="min-h-[100dvh] bg-background flex flex-col items-stretch py-0 px-4 sm:px-6 pb-28 pt-0"
       initial={prefersReducedMotion ? false : { opacity: 0 }}
       animate={prefersReducedMotion ? undefined : { opacity: 1 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
     >
-      {/* Header */}
-      <header className="w-full flex items-center justify-center mb-10">
-        <motion.div
-          initial={prefersReducedMotion ? false : { opacity: 0, y: -10, filter: 'blur(14px)' }}
-          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <VoraLogo />
-        </motion.div>
-      </header>
+      <motion.div
+        initial={prefersReducedMotion ? false : { opacity: 0, y: -6 }}
+        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        className="mb-6 sm:mb-10"
+      >
+        <VoraScreenHeader onReturn={onRedo} variant="onTheme" center={<VoraLogo />} />
+      </motion.div>
 
       {/* Labels */}
       <motion.div
-        className="text-center mb-6 space-y-1"
+        className="text-center mb-6 space-y-1 max-w-md mx-auto px-2"
         initial={prefersReducedMotion ? false : { opacity: 0, y: 14, filter: 'blur(14px)' }}
         animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
@@ -120,7 +119,7 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
       </motion.div>
 
       <motion.div
-        className="w-full max-w-sm space-y-3"
+        className="w-full max-w-sm mx-auto space-y-3 px-1"
         initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
         animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
         transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.18 }}
@@ -306,7 +305,7 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
 
       {/* ── Sticky bottom bar ── */}
       <motion.div
-        className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-white/5 px-4 py-4 z-50"
+        className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-white/5 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] z-50"
         initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
         animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
         transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}

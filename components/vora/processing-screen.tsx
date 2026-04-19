@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
+import { VoraScreenHeader } from './screen-return-button'
 
 const STEPS = [
   'Measurements received',
@@ -15,13 +16,15 @@ interface ProcessingScreenProps {
   /** True when the /api/analyze request has finished (success or fallback). */
   isComplete: boolean
   onComplete: () => void
+  onReturn: () => void
+  source?: 'photo' | 'measurement'
 }
 
 /**
  * Loading UX tied to the real API: early steps tick on a gentle rhythm while Groq runs;
  * the final step completes only when `isComplete` is true, then we transition out.
  */
-export function ProcessingScreen({ isComplete, onComplete }: ProcessingScreenProps) {
+export function ProcessingScreen({ isComplete, onComplete, onReturn, source = 'photo' }: ProcessingScreenProps) {
   /** Number of steps completed (0–3). Step 3 = all checks done. */
   const [completedCount, setCompletedCount] = useState(0)
   const calledRef = useRef(false)
@@ -63,27 +66,24 @@ export function ProcessingScreen({ isComplete, onComplete }: ProcessingScreenPro
     return () => clearTimeout(t)
   }, [isComplete, completedCount, onComplete])
 
+  const analyzingLabel =
+    source === 'measurement' ? 'AI is analyzing your measurements' : 'AI is analyzing your photos'
+
   return (
     <motion.div
-      className="min-h-screen bg-background flex flex-col items-center justify-between py-12 px-6"
+      className="min-h-[100dvh] bg-background flex flex-col items-stretch justify-between px-4 sm:px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-0"
       initial={prefersReducedMotion ? false : { opacity: 0 }}
       animate={prefersReducedMotion ? undefined : { opacity: 1 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
     >
-      <motion.div
-        initial={prefersReducedMotion ? false : { opacity: 0, y: -10, filter: 'blur(14px)' }}
-        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <VoraLogo />
-      </motion.div>
+      <VoraScreenHeader onReturn={onReturn} variant="onTheme" center={<VoraLogo />} />
 
-      <div className="flex flex-col items-center gap-12 w-full max-w-lg">
-        <p className="text-center text-[11px] tracking-[0.22em] text-muted-foreground uppercase px-4">
-          {isComplete ? 'Analysis complete' : 'AI is analyzing your photos'}
+      <div className="flex flex-1 flex-col items-center justify-center gap-10 sm:gap-12 w-full max-w-lg mx-auto py-8 min-h-0">
+        <p className="text-center text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.22em] text-muted-foreground uppercase px-3">
+          {isComplete ? 'Analysis complete' : analyzingLabel}
         </p>
 
-        <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-14 w-full">
+        <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-5 sm:gap-8 md:gap-14 w-full px-2">
           {STEPS.map((label, i) => {
             const done = completedCount > i
             return (
@@ -124,8 +124,10 @@ export function ProcessingScreen({ isComplete, onComplete }: ProcessingScreenPro
                 />
               ))}
             </div>
-            <p className="text-[10px] text-foreground/45 tracking-wide text-center max-w-xs leading-relaxed">
-              This usually takes a few seconds. Longer waits mean we are still processing your images.
+            <p className="text-[10px] text-foreground/45 tracking-wide text-center max-w-xs leading-relaxed px-2">
+              {source === 'measurement'
+                ? 'This usually takes a few seconds. Longer waits mean we are still processing your data.'
+                : 'This usually takes a few seconds. Longer waits mean we are still processing your images.'}
             </p>
           </motion.div>
         )}
@@ -143,7 +145,7 @@ export function ProcessingScreen({ isComplete, onComplete }: ProcessingScreenPro
       </div>
 
       <motion.p
-        className="text-[10px] tracking-[0.25em] text-muted-foreground uppercase"
+        className="text-[10px] tracking-[0.25em] text-muted-foreground uppercase text-center px-4 shrink-0"
         initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
         animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}

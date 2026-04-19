@@ -3,35 +3,36 @@
 import { Upload } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
+import { VoraScreenHeader } from './screen-return-button'
 
 interface NotNowScreenProps {
+  onBack: () => void
   onUploadPhotos: () => void
   onFillQuiz: () => void
 }
 
-export function NotNowScreen({ onUploadPhotos, onFillQuiz }: NotNowScreenProps) {
+export function NotNowScreen({ onBack, onUploadPhotos, onFillQuiz }: NotNowScreenProps) {
   const prefersReducedMotion = useReducedMotion()
   const btn =
     'flex items-center justify-center gap-2.5 rounded-full bg-[#1a1a1a] text-white text-[11px] tracking-[0.22em] uppercase py-3.5 px-6 min-h-[48px] border border-white/[0.08] hover:bg-[#222] transition-colors'
 
   return (
     <motion.div
-      className="min-h-screen bg-[#101010] text-white flex flex-col items-center justify-center px-6 py-12"
+      className="min-h-screen bg-[#101010] text-white flex flex-col items-stretch px-4 sm:px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-0"
       initial={prefersReducedMotion ? false : { opacity: 0 }}
       animate={prefersReducedMotion ? undefined : { opacity: 1 }}
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
     >
-      <div className="flex flex-col items-center text-center max-w-lg w-full gap-8 md:gap-10">
-        <motion.div
-          initial={prefersReducedMotion ? false : { opacity: 0, y: 16, filter: 'blur(14px)' }}
-          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <VoraLogo className="!text-white text-5xl md:text-6xl font-light" />
-        </motion.div>
+      <VoraScreenHeader
+        onReturn={onBack}
+        variant="onDark"
+        center={<VoraLogo className="h-8 w-auto sm:h-10 md:h-12" />}
+      />
+
+      <div className="flex flex-1 flex-col items-center justify-center text-center max-w-lg w-full mx-auto gap-8 md:gap-10 min-h-0 py-8 sm:py-12">
 
         <motion.div
-          className="space-y-5 max-w-sm mx-auto"
+          className="space-y-5 max-w-sm mx-auto w-full px-1"
           initial={prefersReducedMotion ? false : { opacity: 0, y: 14, filter: 'blur(14px)' }}
           animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.6, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
@@ -43,7 +44,7 @@ export function NotNowScreen({ onUploadPhotos, onFillQuiz }: NotNowScreenProps) 
         </motion.div>
 
         <motion.div
-          className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3 w-full max-w-2xl"
+          className="flex flex-wrap items-center justify-center gap-x-3 gap-y-3 w-full max-w-2xl px-1"
           initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
           animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.16, ease: [0.16, 1, 0.3, 1] }}

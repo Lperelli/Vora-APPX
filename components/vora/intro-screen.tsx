@@ -3,13 +3,15 @@
 import { Clock, Upload } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
+import { VoraScreenHeader } from './screen-return-button'
 
 interface IntroScreenProps {
+  onBack: () => void
   onUploadPhotos: () => void
   onEnterMeasurements: () => void
 }
 
-export function IntroScreen({ onUploadPhotos, onEnterMeasurements }: IntroScreenProps) {
+export function IntroScreen({ onBack, onUploadPhotos, onEnterMeasurements }: IntroScreenProps) {
   const prefersReducedMotion = useReducedMotion()
   const container = prefersReducedMotion
     ? {}
@@ -25,16 +27,16 @@ export function IntroScreen({ onUploadPhotos, onEnterMeasurements }: IntroScreen
       }
   return (
     <motion.div
-      className="min-h-screen bg-background flex flex-col items-center justify-between py-12 px-6"
+      className="min-h-screen bg-background flex flex-col items-stretch justify-between px-4 sm:px-6 pb-[max(3rem,env(safe-area-inset-bottom))] pt-0"
       variants={container}
       initial={prefersReducedMotion ? false : 'hidden'}
       animate={prefersReducedMotion ? undefined : 'show'}
     >
-      <motion.div variants={item}>
-        <VoraLogo />
+      <motion.div variants={item} className="w-full shrink-0">
+        <VoraScreenHeader onReturn={onBack} variant="onTheme" center={<VoraLogo />} />
       </motion.div>
 
-      <div className="flex-1 flex flex-col items-center justify-center text-center max-w-md w-full gap-10">
+      <div className="flex-1 flex flex-col items-center justify-center text-center max-w-md w-full mx-auto gap-8 sm:gap-10 px-2 min-h-0 py-6">
         <motion.div className="space-y-5" variants={item}>
           <h2 className="text-xl font-semibold tracking-[0.12em] uppercase text-foreground">
             We know online fitting is a struggle.
@@ -48,7 +50,7 @@ export function IntroScreen({ onUploadPhotos, onEnterMeasurements }: IntroScreen
           </div>
         </motion.div>
 
-        <motion.div className="flex flex-col gap-4 w-full max-w-xs" variants={item}>
+        <motion.div className="flex flex-col gap-4 w-full max-w-xs mx-auto" variants={item}>
           <motion.button
             onClick={onUploadPhotos}
             className="flex items-center justify-center gap-3 w-full rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] text-foreground text-xs tracking-[0.2em] uppercase py-4 px-6 hover:bg-[oklch(0.18_0_0)] transition-colors"
@@ -70,7 +72,10 @@ export function IntroScreen({ onUploadPhotos, onEnterMeasurements }: IntroScreen
         </motion.div>
       </div>
 
-      <motion.p className="text-[10px] tracking-[0.25em] text-muted-foreground uppercase" variants={item}>
+      <motion.p
+        className="text-[10px] tracking-[0.25em] text-muted-foreground uppercase text-center px-4 shrink-0 pb-2"
+        variants={item}
+      >
         Privacy First / Processed Locally, Never Stored
       </motion.p>
     </motion.div>
