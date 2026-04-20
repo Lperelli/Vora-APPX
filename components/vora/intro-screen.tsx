@@ -1,7 +1,7 @@
 'use client'
 
 import { Clock, Upload } from 'lucide-react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
 import { VORA_FLOW_MAX } from './vora-layout'
@@ -14,21 +14,23 @@ interface IntroScreenProps {
 
 export function IntroScreen({ onBack, onUploadPhotos, onEnterMeasurements }: IntroScreenProps) {
   const prefersReducedMotion = useReducedMotion()
-  const container = prefersReducedMotion
-    ? {}
-    : {
-        hidden: {},
-        show: { transition: { staggerChildren: 0.08, delayChildren: 0.14 } },
-      }
-  const item = prefersReducedMotion
-    ? {}
-    : {
-        hidden: { opacity: 0, y: 14, filter: 'blur(14px)' },
-        show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } },
-      }
+
+  const container: Variants = {
+    hidden: {},
+    show: prefersReducedMotion
+      ? {}
+      : { transition: { staggerChildren: 0.08, delayChildren: 0.14 } },
+  }
+  const item: Variants = {
+    hidden: prefersReducedMotion ? { opacity: 1, y: 0, filter: 'blur(0px)' } : { opacity: 0, y: 14, filter: 'blur(14px)' },
+    show: prefersReducedMotion
+      ? { opacity: 1, y: 0, filter: 'blur(0px)' }
+      : { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } },
+  }
+
   return (
     <motion.div
-      className="min-h-screen bg-background flex flex-col items-stretch justify-between px-4 sm:px-6 pb-[max(3rem,env(safe-area-inset-bottom))] pt-0"
+      className="flex min-h-[100dvh] flex-col items-stretch justify-between bg-background px-4 pb-[max(3rem,env(safe-area-inset-bottom))] pt-0 sm:px-6"
       variants={container}
       initial={prefersReducedMotion ? false : 'hidden'}
       animate={prefersReducedMotion ? undefined : 'show'}
@@ -53,10 +55,10 @@ export function IntroScreen({ onBack, onUploadPhotos, onEnterMeasurements }: Int
           </div>
         </motion.div>
 
-        <motion.div className="flex flex-col gap-4 w-full max-w-md lg:max-w-lg mx-auto" variants={item}>
+        <motion.div className="mx-auto flex w-full max-w-md flex-col gap-4 px-1 lg:max-w-lg" variants={item}>
           <motion.button
             onClick={onUploadPhotos}
-            className="flex items-center justify-center gap-3 w-full rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] text-foreground text-xs tracking-[0.2em] uppercase py-4 px-6 hover:bg-[oklch(0.18_0_0)] transition-colors"
+            className="flex w-full min-h-[48px] items-center justify-center gap-3 rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-5 py-4 text-xs uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)] sm:px-6"
             whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
             whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
           >
@@ -66,7 +68,7 @@ export function IntroScreen({ onBack, onUploadPhotos, onEnterMeasurements }: Int
           <p className="text-xs text-muted-foreground text-center tracking-widest uppercase">or</p>
           <motion.button
             onClick={onEnterMeasurements}
-            className="flex items-center justify-center gap-3 w-full rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] text-foreground text-xs tracking-[0.2em] uppercase py-4 px-6 hover:bg-[oklch(0.18_0_0)] transition-colors"
+            className="flex w-full min-h-[48px] items-center justify-center gap-3 rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-5 py-4 text-xs uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)] sm:px-6"
             whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
             whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
           >

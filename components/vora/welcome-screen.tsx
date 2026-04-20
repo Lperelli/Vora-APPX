@@ -56,7 +56,7 @@ export function WelcomeScreen({ onStart, onSkip }: WelcomeScreenProps) {
         {/* Overlay card */}
         <div className="absolute inset-0 flex items-center justify-center">
           <motion.div
-            className="bg-[oklch(0.12_0_0/0.92)] backdrop-blur-sm rounded-2xl px-10 py-8 mx-4 max-w-sm w-full text-center border border-white/10"
+            className="mx-3 w-full max-w-sm rounded-2xl border border-white/10 bg-[oklch(0.12_0_0/0.92)] px-6 py-7 text-center backdrop-blur-sm sm:mx-4 sm:px-10 sm:py-8"
             initial={prefersReducedMotion ? false : { opacity: 0, y: 18, scale: 0.98, filter: 'blur(18px)' }}
             animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
             transition={{ duration: 0.75, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}

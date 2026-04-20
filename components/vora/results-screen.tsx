@@ -121,7 +121,7 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
 
   return (
     <motion.div
-      className="flex min-h-[100dvh] flex-col items-stretch bg-background px-4 pb-28 pt-0 sm:px-6"
+      className="flex min-h-[100dvh] flex-col items-stretch overflow-x-hidden bg-background px-3 pb-32 pt-0 sm:px-6 sm:pb-28"
       initial={prefersReducedMotion ? false : { opacity: 0 }}
       animate={prefersReducedMotion ? undefined : { opacity: 1 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
@@ -143,7 +143,7 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
         transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.08 }}
       >
         <p className="text-[10px] uppercase tracking-[0.3em] text-foreground/85">Ta-da! Your body type</p>
-        <p className="text-[13px] leading-relaxed text-foreground/55">
+        <p className="px-0.5 text-[12px] leading-relaxed text-foreground/55 sm:px-0 sm:text-[13px]">
           {analysis.analysisSource === 'measurement'
             ? "We've analyzed your measurements. Here's what we discovered."
             : "We've analyzed your measurements and photo. Here's what we discovered."}
@@ -159,12 +159,16 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
           animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.14 }}
         >
-          <div className="flex items-center gap-6 sm:gap-8">
-            <div className="h-[190px] w-[78px] shrink-0 sm:h-[210px] sm:w-[86px]">{silhouette}</div>
-            <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start sm:gap-6 md:gap-8">
+            <div className="h-[168px] w-[70px] shrink-0 sm:h-[190px] sm:w-[78px] md:h-[210px] md:w-[86px]">
+              {silhouette}
+            </div>
+            <div className="min-w-0 flex-1 space-y-2 text-center sm:text-left">
               <p className="text-[9.5px] uppercase tracking-[0.28em] text-foreground/50">Your silhouette</p>
-              <p className="text-[13px] font-semibold uppercase tracking-[0.22em] text-foreground">{label}</p>
-              <p className="text-[12.5px] leading-[1.6] text-foreground/60">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-foreground sm:text-[13px] sm:tracking-[0.22em]">
+                {label}
+              </p>
+              <p className="text-[12px] leading-[1.6] text-foreground/60 sm:text-[12.5px]">
                 {analysis.silhouetteDescription}
               </p>
             </div>
@@ -206,7 +210,7 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
         <motion.button
           type="button"
           onClick={handleEmail}
-          className="mx-auto mt-2 flex items-center justify-center gap-2.5 rounded-full border border-white/12 bg-[oklch(0.14_0_0)] px-7 py-3.5 text-[11px] uppercase tracking-[0.22em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)]"
+          className="mx-auto mt-2 flex min-h-[48px] w-full max-w-[min(100%,520px)] items-center justify-center gap-2 rounded-full border border-white/12 bg-[oklch(0.14_0_0)] px-4 py-3 text-center text-[9px] uppercase leading-snug tracking-[0.16em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)] sm:w-auto sm:gap-2.5 sm:px-7 sm:py-3.5 sm:text-[11px] sm:leading-normal sm:tracking-[0.22em]"
           initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
           animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.6 }}
@@ -343,7 +347,7 @@ function CelebrityReferences({
         <p className="text-[12.5px] italic text-foreground/45">Get inspired</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         {items.map((celeb, i) => (
           <CelebrityFlipCard
             key={`${celeb.name}-${i}`}
@@ -380,7 +384,7 @@ function CelebrityFlipCard({
           alt={name}
           fill
           className="object-cover object-top"
-          sizes="(max-width:640px) 24vw, 120px"
+          sizes="(max-width:640px) 42vw, 120px"
         />
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent p-1.5 pt-6">
           <p className="text-center text-[8.5px] font-medium uppercase tracking-[0.12em] leading-[1.15] text-white">
@@ -431,7 +435,7 @@ function CelebrityFlipCard({
             alt={name}
             fill
             className="object-cover object-top"
-            sizes="(max-width:640px) 24vw, 120px"
+            sizes="(max-width:640px) 42vw, 120px"
           />
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-1.5 pt-8">
             <p className="text-center text-[8.5px] font-medium uppercase tracking-[0.12em] leading-[1.15] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">

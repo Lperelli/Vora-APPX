@@ -34,9 +34,13 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
     onSubmit(files)
   }
 
+  const bottomPad = hasPhotos
+    ? 'pb-[max(7.5rem,calc(env(safe-area-inset-bottom)+4.5rem))]'
+    : 'pb-[max(2rem,env(safe-area-inset-bottom))]'
+
   return (
     <motion.div
-      className="min-h-[100dvh] bg-background flex flex-col items-stretch px-4 sm:px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-0"
+      className={`flex min-h-[100dvh] flex-col items-stretch bg-background px-4 pt-0 sm:px-6 ${bottomPad}`}
       initial={prefersReducedMotion ? false : { opacity: 0 }}
       animate={prefersReducedMotion ? undefined : { opacity: 1 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
@@ -84,7 +88,7 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
 
           <motion.button
             onClick={handleSubmit}
-            className="mx-auto min-h-[48px] w-full max-w-md rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-6 py-4 text-xs uppercase tracking-[0.25em] text-foreground transition-colors hover:bg-[oklch(0.20_0_0)]"
+            className="mx-auto min-h-[48px] w-full max-w-md rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-4 py-4 text-[11px] uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-[oklch(0.20_0_0)] sm:px-6 sm:text-xs sm:tracking-[0.25em]"
             initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
             animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: prefersReducedMotion ? 0 : 0.18 }}

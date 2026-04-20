@@ -68,7 +68,7 @@ export function ProcessingScreen({ isComplete, onComplete, onReturn, source = 'p
 
   return (
     <motion.div
-      className="min-h-[100dvh] bg-background flex flex-col items-stretch justify-between px-4 sm:px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-0"
+      className="flex min-h-[100dvh] flex-col items-stretch justify-between bg-background px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-0 sm:px-6"
       initial={prefersReducedMotion ? false : { opacity: 0 }}
       animate={prefersReducedMotion ? undefined : { opacity: 1 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
@@ -76,7 +76,7 @@ export function ProcessingScreen({ isComplete, onComplete, onReturn, source = 'p
       <VoraScreenHeader onReturn={onReturn} variant="onTheme" center={<VoraLogo />} />
 
       <div
-        className={`flex flex-1 flex-col items-center justify-center gap-8 sm:gap-10 md:gap-12 ${VORA_FLOW_MAX} py-8 min-h-0 px-3 sm:px-4`}
+        className={`flex min-h-0 flex-1 flex-col items-center justify-center gap-6 px-2 py-6 sm:gap-10 sm:px-4 sm:py-8 md:gap-12 ${VORA_FLOW_MAX}`}
       >
         {!isComplete && (
           <p className="text-center text-[11px] sm:text-xs md:text-sm tracking-[0.28em] sm:tracking-[0.32em] text-foreground/90 uppercase">
@@ -84,7 +84,7 @@ export function ProcessingScreen({ isComplete, onComplete, onReturn, source = 'p
           </p>
         )}
 
-        <div className="flex flex-col md:flex-row flex-wrap items-center justify-center gap-4 sm:gap-6 md:gap-10 lg:gap-16 xl:gap-20 w-full">
+        <div className="flex w-full flex-col flex-wrap items-center justify-center gap-3 sm:gap-6 md:flex-row md:gap-10 lg:gap-16 xl:gap-20">
           {steps.map((label, i) => {
             const done = completedCount > i
             return (
@@ -102,7 +102,7 @@ export function ProcessingScreen({ isComplete, onComplete, onReturn, source = 'p
                     done ? 'text-foreground' : 'text-muted-foreground'
                   }`}
                 />
-                <span className="text-[11px] sm:text-xs md:text-sm text-foreground/80 tracking-wide whitespace-nowrap">
+                <span className="max-w-[16rem] text-center text-[11px] tracking-wide text-foreground/80 sm:max-w-none sm:text-xs md:text-left md:text-sm md:whitespace-nowrap">
                   {label}
                 </span>
               </motion.div>

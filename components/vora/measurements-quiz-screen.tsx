@@ -35,8 +35,6 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
   const [hips, setHips] = useState('')
   const [height, setHeight] = useState('')
   const [focusField, setFocusField] = useState<MeasurementFocusField>(null)
-  /** 0 = SHOW ME THE RESULTS, 1 = SUBMIT (second step) */
-  const [ctaPhase, setCtaPhase] = useState<0 | 1>(0)
 
   const bustN = toNum(bust)
   const waistN = toNum(waist)
@@ -45,16 +43,10 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
 
   const allValid = bustN > 0 && waistN > 0 && hipsN > 0 && heightN > 0
 
-  const handlePrimary = useCallback(() => {
+  const handleShowResults = useCallback(() => {
     if (!allValid) return
-    if (ctaPhase === 0) {
-      setCtaPhase(1)
-      return
-    }
     onSubmitMeasurements({ bust: bustN, waist: waistN, hips: hipsN, height: heightN })
-  }, [allValid, bustN, waistN, hipsN, heightN, ctaPhase, onSubmitMeasurements])
-
-  const ctaLabel = ctaPhase === 0 ? 'SHOW ME THE RESULTS' : 'SUBMIT'
+  }, [allValid, bustN, waistN, hipsN, heightN, onSubmitMeasurements])
 
   const fieldShell = useMemo(
     () =>
@@ -66,9 +58,9 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
     <div className="flex min-h-[100dvh] flex-col bg-background font-sans text-foreground">
       <VoraScreenHeader onReturn={onBack} variant="onTheme" center={<VoraLogo />} />
 
-      {/* Figma: 348px form column + 70px gap + reactive wireframe; whole row centered in viewport */}
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 pb-[max(5.5rem,env(safe-area-inset-bottom))] pt-2 sm:px-6 sm:pt-4">
-        <div className="flex w-full flex-col items-center justify-center gap-[70px] md:flex-row md:items-start md:justify-center">
+      {/* Figma: 348px form + 70px gap + wireframe (row); mobile stacks with smaller gap; scrolls on short viewports */}
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto overscroll-y-contain px-4 pb-[max(5.5rem,env(safe-area-inset-bottom))] pt-4 sm:justify-center sm:px-6 sm:pt-4">
+        <div className="flex w-full max-w-full flex-col items-center justify-center gap-10 md:flex-row md:items-start md:justify-center md:gap-[70px]">
           <motion.div
             className={`${VORA_MEASUREMENTS_FORM_MAX} shrink-0 text-center`}
             initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
@@ -157,12 +149,12 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
             <motion.button
               type="button"
               disabled={!allValid}
-              onClick={handlePrimary}
+              onClick={handleShowResults}
               className="mt-8 h-[48px] w-full rounded-[14px] border border-white/[0.1] bg-[#1a1a1a] px-2 text-[10px] uppercase tracking-[0.18em] text-foreground/92 transition-all duration-300 hover:border-white/[0.14] hover:bg-[#242424] disabled:cursor-not-allowed disabled:opacity-[0.32] sm:mt-10 sm:h-[52px] sm:text-[11px] sm:tracking-[0.22em]"
               whileHover={!allValid || prefersReducedMotion ? undefined : { scale: 1.01 }}
               whileTap={!allValid || prefersReducedMotion ? undefined : { scale: 0.992 }}
             >
-              {ctaLabel}
+              SHOW ME THE RESULTS
             </motion.button>
           </motion.div>
 
