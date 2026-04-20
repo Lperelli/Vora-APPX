@@ -4,6 +4,7 @@ import { Upload } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
+import { VORA_FLOW_MAX } from './vora-layout'
 
 interface NotNowScreenProps {
   onBack: () => void
@@ -29,10 +30,12 @@ export function NotNowScreen({ onBack, onUploadPhotos, onFillQuiz }: NotNowScree
         center={<VoraLogo className="h-8 w-auto sm:h-10 md:h-12" />}
       />
 
-      <div className="flex flex-1 flex-col items-center justify-center text-center max-w-lg w-full mx-auto gap-8 md:gap-10 min-h-0 py-8 sm:py-12">
+      <div
+        className={`flex flex-1 flex-col items-center justify-center text-center ${VORA_FLOW_MAX} gap-8 md:gap-10 min-h-0 py-8 sm:py-12 px-3 sm:px-4`}
+      >
 
         <motion.div
-          className="space-y-5 max-w-sm mx-auto w-full px-1"
+          className="space-y-5 max-w-2xl lg:max-w-3xl mx-auto w-full px-1"
           initial={prefersReducedMotion ? false : { opacity: 0, y: 14, filter: 'blur(14px)' }}
           animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.6, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}

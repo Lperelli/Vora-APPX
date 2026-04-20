@@ -279,6 +279,9 @@ export function buildAnalysisFromBodyType(bodyType: BodyTypeId, confidence: stri
 }
 
 /** What Groq is allowed to return (classification only). */
+const normalizeBodyTypeSlug = (v: unknown) =>
+  typeof v === 'string' ? v.toLowerCase().trim().replace(/_/g, '-') : v
+
 export const AiBodyClassificationSchema = z.object({
   bodyType: bodyTypeEnum.catch('rectangle'),
   confidence: z.enum(['high', 'medium', 'low']).catch('medium'),
@@ -288,6 +291,6 @@ export type AiBodyClassification = z.infer<typeof AiBodyClassificationSchema>
 
 /** Strict parse for Groq JSON responses (invalid → parse error, no silent defaults). */
 export const AiBodyClassificationGroqSchema = z.object({
-  bodyType: z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase().trim() : v), bodyTypeEnum),
+  bodyType: z.preprocess(normalizeBodyTypeSlug, bodyTypeEnum.catch('rectangle')),
   confidence: z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase().trim() : v), z.enum(['high', 'medium', 'low'])),
 })

@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
 import { MeasurementBodyWireframe, type MeasurementFocusField } from './measurement-body-wireframe'
 import { VoraScreenHeader } from './screen-return-button'
+import { VORA_MEASUREMENTS_FORM_MAX } from './vora-layout'
 
 export interface MeasurementsPayload {
   bust: number
@@ -57,36 +58,32 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
 
   const fieldShell = useMemo(
     () =>
-      'w-full h-[48px] sm:h-[52px] rounded-[14px] bg-[#141414] border border-white/[0.12] px-3.5 sm:px-4 text-sm text-white placeholder:text-white/22 outline-none transition-[border-color,background-color,box-shadow] duration-300 ease-out focus:border-white focus:bg-[#161616] focus:shadow-[0_0_0_1px_rgba(255,255,255,0.06)] disabled:opacity-40',
+      'w-full h-[48px] sm:h-[52px] rounded-[14px] border border-white/[0.12] bg-[#141414] px-3.5 text-sm text-foreground outline-none transition-[border-color,background-color,box-shadow] duration-300 ease-out placeholder:text-foreground/22 focus:border-foreground focus:bg-[#161616] focus:shadow-[0_0_0_1px_rgba(255,255,255,0.06)] disabled:opacity-40 sm:px-4',
     []
   )
 
   return (
-    <div className="min-h-[100dvh] bg-black text-white flex flex-col font-sans">
-      <VoraScreenHeader
-        onReturn={onBack}
-        variant="onDark"
-        center={<VoraLogo className="h-8 w-auto sm:h-10 md:h-12" />}
-      />
+    <div className="flex min-h-[100dvh] flex-col bg-background font-sans text-foreground">
+      <VoraScreenHeader onReturn={onBack} variant="onTheme" center={<VoraLogo />} />
 
-      {/* Centered block: form + wireframe (design: one visual group, centered on large screens) */}
-      <div className="flex-1 flex flex-col items-center justify-start lg:justify-center px-4 sm:px-6 pb-[max(5.5rem,env(safe-area-inset-bottom))] pt-2 sm:pt-4 min-h-0">
-        <div className="w-full max-w-[920px] flex flex-col lg:flex-row items-center lg:items-start justify-center gap-10 lg:gap-14 xl:gap-20">
+      {/* Figma: 348px form column + 70px gap + reactive wireframe; whole row centered in viewport */}
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 pb-[max(5.5rem,env(safe-area-inset-bottom))] pt-2 sm:px-6 sm:pt-4">
+        <div className="flex w-full flex-col items-center justify-center gap-[70px] md:flex-row md:items-start md:justify-center">
           <motion.div
-            className="w-full max-w-[420px] shrink-0 text-center"
+            className={`${VORA_MEASUREMENTS_FORM_MAX} shrink-0 text-center`}
             initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
             animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.06, ease: [0.16, 1, 0.3, 1] }}
           >
-            <p className="text-[10px] tracking-[0.38em] text-white/55 uppercase mb-2.5">Measurements</p>
-            <p className="text-[13px] leading-relaxed text-white/42 mb-8 sm:mb-10 tracking-[0.01em] px-1">
-              Please provide your measurements, madam.
+            <p className="mb-2.5 text-[10px] uppercase tracking-[0.38em] text-foreground/55">Measurements</p>
+            <p className="mb-8 px-1 text-[13px] leading-relaxed tracking-[0.01em] text-foreground/42 sm:mb-10">
+              Please provide your measurements, madame.
             </p>
 
-            <div className="space-y-6 sm:space-y-7 text-left mx-auto w-full">
+            <div className="mx-auto w-full space-y-6 text-left sm:space-y-7">
               <div>
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 mb-2">
-                  <span className="text-[11px] tracking-[0.06em] text-white/92">Bust (cm)</span>
+                <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <span className="text-[11px] tracking-[0.06em] text-foreground/92">Bust (cm)</span>
                 </div>
                 <input
                   type="text"
@@ -102,9 +99,9 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
               </div>
 
               <div>
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 mb-2">
-                  <span className="text-[11px] tracking-[0.06em] text-white/92">Waist (cm)</span>
-                  <span className="text-[10px] italic text-white/38 tracking-wide">Narrowest part of mid body</span>
+                <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <span className="text-[11px] tracking-[0.06em] text-foreground/92">Waist (cm)</span>
+                  <span className="text-[10px] italic tracking-wide text-foreground/38">Narrowest part of mid body</span>
                 </div>
                 <input
                   type="text"
@@ -120,9 +117,11 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
               </div>
 
               <div>
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 mb-2">
-                  <span className="text-[11px] tracking-[0.06em] text-white/92">Hips (cm)</span>
-                  <span className="text-[10px] italic text-white/38 tracking-wide">Widest part of bottom section of body</span>
+                <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <span className="text-[11px] tracking-[0.06em] text-foreground/92">Hips (cm)</span>
+                  <span className="text-[10px] italic tracking-wide text-foreground/38">
+                    Widest part of bottom section of body
+                  </span>
                 </div>
                 <input
                   type="text"
@@ -138,8 +137,8 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
               </div>
 
               <div>
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 mb-2">
-                  <span className="text-[11px] tracking-[0.06em] text-white/92">Height (cm)</span>
+                <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <span className="text-[11px] tracking-[0.06em] text-foreground/92">Height (cm)</span>
                 </div>
                 <input
                   type="text"
@@ -159,7 +158,7 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
               type="button"
               disabled={!allValid}
               onClick={handlePrimary}
-              className="mt-8 sm:mt-10 w-full h-[48px] sm:h-[52px] rounded-[14px] bg-[#1a1a1a] border border-white/[0.1] text-[10px] sm:text-[11px] tracking-[0.18em] sm:tracking-[0.22em] uppercase text-white/92 hover:bg-[#242424] hover:border-white/[0.14] disabled:opacity-[0.32] disabled:cursor-not-allowed transition-all duration-300 px-2"
+              className="mt-8 h-[48px] w-full rounded-[14px] border border-white/[0.1] bg-[#1a1a1a] px-2 text-[10px] uppercase tracking-[0.18em] text-foreground/92 transition-all duration-300 hover:border-white/[0.14] hover:bg-[#242424] disabled:cursor-not-allowed disabled:opacity-[0.32] sm:mt-10 sm:h-[52px] sm:text-[11px] sm:tracking-[0.22em]"
               whileHover={!allValid || prefersReducedMotion ? undefined : { scale: 1.01 }}
               whileTap={!allValid || prefersReducedMotion ? undefined : { scale: 0.992 }}
             >
@@ -168,7 +167,7 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
           </motion.div>
 
           <motion.div
-            className="flex shrink-0 justify-center items-center w-full lg:w-auto lg:flex-1 pt-2 lg:pt-8 min-h-[200px] lg:min-h-[280px]"
+            className="flex min-h-[200px] shrink-0 items-start justify-center md:min-h-[280px] md:pt-0"
             initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
             animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
@@ -184,8 +183,8 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
         </div>
       </div>
 
-      <footer className="fixed bottom-0 left-0 right-0 py-4 sm:py-6 text-center pointer-events-none bg-gradient-to-t from-black via-black/90 to-transparent pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <p className="text-[8px] sm:text-[9px] tracking-[0.24em] sm:tracking-[0.28em] uppercase text-white/38 px-3">
+      <footer className="pointer-events-none fixed bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background/90 to-transparent py-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-center sm:py-6">
+        <p className="px-3 text-[8px] uppercase tracking-[0.24em] text-foreground/38 sm:text-[9px] sm:tracking-[0.28em]">
           Privacy First / Processed Locally, Never Stored
         </p>
       </footer>

@@ -95,7 +95,7 @@ export function MeasurementBodyWireframe({
   return (
     <motion.svg
       viewBox="0 0 140 300"
-      className="w-[min(100%,200px)] h-auto max-h-[min(52vh,420px)] text-white/35"
+      className="h-auto max-h-[min(52vh,420px)] w-[min(100%,200px)] text-foreground/35 md:w-[min(100%,240px)]"
       aria-hidden
     >
       <motion.line
@@ -144,7 +144,7 @@ export function MeasurementBodyWireframe({
         y1={yBust}
         x2={CX + hb}
         y2={yBust}
-        stroke="white"
+        stroke="currentColor"
         strokeLinecap="round"
         initial={false}
         animate={focusField === 'bust' ? lit : dim}
@@ -155,7 +155,7 @@ export function MeasurementBodyWireframe({
         y1={yWaist}
         x2={CX + hw}
         y2={yWaist}
-        stroke="white"
+        stroke="currentColor"
         strokeLinecap="round"
         initial={false}
         animate={focusField === 'waist' ? lit : dim}
@@ -166,7 +166,7 @@ export function MeasurementBodyWireframe({
         y1={yHip}
         x2={CX + hh}
         y2={yHip}
-        stroke="white"
+        stroke="currentColor"
         strokeLinecap="round"
         initial={false}
         animate={focusField === 'hips' ? lit : dim}
@@ -174,22 +174,22 @@ export function MeasurementBodyWireframe({
       />
 
       {focusField === 'bust' && (
-        <>
-          <circle cx={CX - hb} cy={yBust} r={3.5} fill="white" />
-          <circle cx={CX + hb} cy={yBust} r={3.5} fill="white" />
-        </>
+        <g className="text-foreground">
+          <circle cx={CX - hb} cy={yBust} r={3.5} fill="currentColor" />
+          <circle cx={CX + hb} cy={yBust} r={3.5} fill="currentColor" />
+        </g>
       )}
       {focusField === 'waist' && (
-        <>
-          <circle cx={CX - hw} cy={yWaist} r={3.5} fill="white" />
-          <circle cx={CX + hw} cy={yWaist} r={3.5} fill="white" />
-        </>
+        <g className="text-foreground">
+          <circle cx={CX - hw} cy={yWaist} r={3.5} fill="currentColor" />
+          <circle cx={CX + hw} cy={yWaist} r={3.5} fill="currentColor" />
+        </g>
       )}
       {focusField === 'hips' && (
-        <>
-          <circle cx={CX - hh} cy={yHip} r={3.5} fill="white" />
-          <circle cx={CX + hh} cy={yHip} r={3.5} fill="white" />
-        </>
+        <g className="text-foreground">
+          <circle cx={CX - hh} cy={yHip} r={3.5} fill="currentColor" />
+          <circle cx={CX + hh} cy={yHip} r={3.5} fill="currentColor" />
+        </g>
       )}
     </motion.svg>
   )

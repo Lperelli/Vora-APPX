@@ -47,7 +47,7 @@ export function VoraScreenHeader({
 }) {
   return (
     <header
-      className={`grid w-full max-w-6xl mx-auto grid-cols-[minmax(44px,auto)_1fr_minmax(44px,auto)] items-center gap-2 px-4 sm:px-6 pt-[max(1rem,env(safe-area-inset-top))] pb-3 sm:pb-4 ${className}`.trim()}
+      className={`grid w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[80rem] mx-auto grid-cols-[minmax(44px,auto)_1fr_minmax(44px,auto)] items-center gap-2 px-4 sm:px-6 pt-[max(1rem,env(safe-area-inset-top))] pb-3 sm:pb-4 ${className}`.trim()}
     >
       <div className="flex justify-start items-center">
         <ScreenReturnButton onClick={onReturn} variant={variant} />

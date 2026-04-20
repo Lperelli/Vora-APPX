@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Camera, Loader2, Upload, X } from 'lucide-react'
+import { VORA_UPLOAD_PANEL_MAX } from './vora-layout'
 
 export type FlipPhotoSlot = {
   file: File
@@ -309,7 +310,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
   if (prefersReducedMotion) {
     return (
       <>
-        <div className="mx-auto w-full max-w-xl px-1">
+        <div className={`${VORA_UPLOAD_PANEL_MAX} px-1 sm:px-2`}>
           {hiddenInputs}
           <div
             className="rounded-3xl border border-white/10 bg-[oklch(0.13_0_0)] px-4 py-5 shadow-[0_24px_70px_-28px_rgba(0,0,0,0.85)] sm:px-6 sm:py-6"
@@ -352,7 +353,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
 
   return (
     <>
-      <div className="mx-auto w-full max-w-xl px-1">
+      <div className={`${VORA_UPLOAD_PANEL_MAX} px-1 sm:px-2`}>
         {hiddenInputs}
 
         <motion.div

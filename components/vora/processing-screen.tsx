@@ -5,12 +5,10 @@ import { Check } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
+import { VORA_FLOW_MAX } from './vora-layout'
 
-const STEPS = [
-  'Measurements received',
-  'Body shape identified',
-  'Style profile created',
-]
+const STEPS_PHOTO = ['Photos received', 'Body shape identified', 'Style profile created'] as const
+const STEPS_MEASUREMENT = ['Measurements received', 'Body shape identified', 'Style profile created'] as const
 
 interface ProcessingScreenProps {
   /** True when the /api/analyze request has finished (success or fallback). */
@@ -66,8 +64,7 @@ export function ProcessingScreen({ isComplete, onComplete, onReturn, source = 'p
     return () => clearTimeout(t)
   }, [isComplete, completedCount, onComplete])
 
-  const analyzingLabel =
-    source === 'measurement' ? 'AI is analyzing your measurements' : 'AI is analyzing your photos'
+  const steps = source === 'measurement' ? STEPS_MEASUREMENT : STEPS_PHOTO
 
   return (
     <motion.div
@@ -78,13 +75,17 @@ export function ProcessingScreen({ isComplete, onComplete, onReturn, source = 'p
     >
       <VoraScreenHeader onReturn={onReturn} variant="onTheme" center={<VoraLogo />} />
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-10 sm:gap-12 w-full max-w-lg mx-auto py-8 min-h-0">
-        <p className="text-center text-[10px] sm:text-[11px] tracking-[0.2em] sm:tracking-[0.22em] text-muted-foreground uppercase px-3">
-          {isComplete ? 'Analysis complete' : analyzingLabel}
-        </p>
+      <div
+        className={`flex flex-1 flex-col items-center justify-center gap-8 sm:gap-10 md:gap-12 ${VORA_FLOW_MAX} py-8 min-h-0 px-3 sm:px-4`}
+      >
+        {!isComplete && (
+          <p className="text-center text-[11px] sm:text-xs md:text-sm tracking-[0.28em] sm:tracking-[0.32em] text-foreground/90 uppercase">
+            Loading results…
+          </p>
+        )}
 
-        <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-5 sm:gap-8 md:gap-14 w-full px-2">
-          {STEPS.map((label, i) => {
+        <div className="flex flex-col md:flex-row flex-wrap items-center justify-center gap-4 sm:gap-6 md:gap-10 lg:gap-16 xl:gap-20 w-full">
+          {steps.map((label, i) => {
             const done = completedCount > i
             return (
               <motion.div
@@ -101,7 +102,9 @@ export function ProcessingScreen({ isComplete, onComplete, onReturn, source = 'p
                     done ? 'text-foreground' : 'text-muted-foreground'
                   }`}
                 />
-                <span className="text-xs text-foreground/80 tracking-wide">{label}</span>
+                <span className="text-[11px] sm:text-xs md:text-sm text-foreground/80 tracking-wide whitespace-nowrap">
+                  {label}
+                </span>
               </motion.div>
             )
           })}
@@ -124,7 +127,7 @@ export function ProcessingScreen({ isComplete, onComplete, onReturn, source = 'p
                 />
               ))}
             </div>
-            <p className="text-[10px] text-foreground/45 tracking-wide text-center max-w-xs leading-relaxed px-2">
+            <p className="text-[10px] sm:text-[11px] text-foreground/45 tracking-wide text-center max-w-md sm:max-w-xl md:max-w-2xl leading-relaxed px-2">
               {source === 'measurement'
                 ? 'This usually takes a few seconds. Longer waits mean we are still processing your data.'
                 : 'This usually takes a few seconds. Longer waits mean we are still processing your images.'}
@@ -134,7 +137,7 @@ export function ProcessingScreen({ isComplete, onComplete, onReturn, source = 'p
 
         {isComplete && completedCount >= 3 && (
           <motion.p
-            className="text-sm tracking-[0.35em] uppercase text-foreground"
+            className="text-base sm:text-lg tracking-[0.28em] sm:tracking-[0.35em] uppercase text-foreground font-medium"
             initial={prefersReducedMotion ? false : { opacity: 0, y: 12, filter: 'blur(14px)' }}
             animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}

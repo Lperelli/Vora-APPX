@@ -1,59 +1,79 @@
 'use client'
 
 import Image from 'next/image'
-import { Check, X } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Check } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
+import type { BodyTypeId } from '@/lib/body-type-analysis'
+import type { BodyAnalysis } from '@/app/api/analyze/route'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
-import type { BodyAnalysis } from '@/app/api/analyze/route'
+import { VORA_RESULTS_MAX } from './vora-layout'
 
-// ── Silhouette SVG illustrations ───────────────────────────────────────
+// ── Line-art silhouettes (one per BodyTypeId from API / presets) ──────────
+
 function HourglassSvg() {
   return (
-    <svg viewBox="0 0 60 140" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="w-full h-full">
-      <path d="M12 8 Q30 6 48 8 L43 52 Q30 68 30 76 Q30 84 43 100 L48 134 Q30 136 12 134 L17 100 Q30 84 30 76 Q30 68 17 52 Z" className="fill-foreground/10 stroke-foreground/60" />
-      <line x1="30" y1="4" x2="30" y2="138" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" className="text-foreground/20" />
+    <svg viewBox="0 0 60 140" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="h-full w-full">
+      <path
+        d="M12 8 Q30 6 48 8 L43 52 Q30 68 30 76 Q30 84 43 100 L48 134 Q30 136 12 134 L17 100 Q30 84 30 76 Q30 68 17 52 Z"
+        className="fill-foreground/[0.06] stroke-foreground/65"
+      />
+      <line x1="30" y1="4" x2="30" y2="138" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" className="text-foreground/25" />
     </svg>
   )
 }
 
 function RectangleSvg() {
   return (
-    <svg viewBox="0 0 60 140" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="w-full h-full">
-      <path d="M14 8 Q30 6 46 8 L44 68 Q30 72 30 72 Q30 72 16 68 Z M16 76 Q30 72 30 72 Q30 72 44 76 L46 134 Q30 136 14 134 Z" className="fill-foreground/10 stroke-foreground/60" />
-      <line x1="30" y1="4" x2="30" y2="138" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" className="text-foreground/20" />
+    <svg viewBox="0 0 60 140" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="h-full w-full">
+      <path
+        d="M14 8 Q30 6 46 8 L44 68 Q30 72 30 72 Q30 72 16 68 Z M16 76 Q30 72 30 72 Q30 72 44 76 L46 134 Q30 136 14 134 Z"
+        className="fill-foreground/[0.06] stroke-foreground/65"
+      />
+      <line x1="30" y1="4" x2="30" y2="138" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" className="text-foreground/25" />
     </svg>
   )
 }
 
 function PearSvg() {
   return (
-    <svg viewBox="0 0 60 140" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="w-full h-full">
-      <path d="M18 8 Q30 6 42 8 L40 52 Q30 66 30 76 Q30 86 46 106 L50 134 Q30 138 10 134 L14 106 Q30 86 30 76 Q30 66 20 52 Z" className="fill-foreground/10 stroke-foreground/60" />
-      <line x1="30" y1="4" x2="30" y2="138" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" className="text-foreground/20" />
+    <svg viewBox="0 0 60 140" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="h-full w-full">
+      <path
+        d="M18 8 Q30 6 42 8 L40 52 Q30 66 30 76 Q30 86 46 106 L50 134 Q30 138 10 134 L14 106 Q30 86 30 76 Q30 66 20 52 Z"
+        className="fill-foreground/[0.06] stroke-foreground/65"
+      />
+      <line x1="30" y1="4" x2="30" y2="138" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" className="text-foreground/25" />
     </svg>
   )
 }
 
 function AppleSvg() {
   return (
-    <svg viewBox="0 0 60 140" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="w-full h-full">
-      <path d="M16 8 Q30 6 44 8 L50 62 Q44 86 30 84 Q16 86 10 62 Z M18 88 Q30 84 30 84 Q30 84 42 88 L44 134 Q30 136 16 134 Z" className="fill-foreground/10 stroke-foreground/60" />
-      <line x1="30" y1="4" x2="30" y2="138" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" className="text-foreground/20" />
+    <svg viewBox="0 0 60 140" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="h-full w-full">
+      <path
+        d="M16 8 Q30 6 44 8 L50 62 Q44 86 30 84 Q16 86 10 62 Z M18 88 Q30 84 30 84 Q30 84 42 88 L44 134 Q30 136 16 134 Z"
+        className="fill-foreground/[0.06] stroke-foreground/65"
+      />
+      <line x1="30" y1="4" x2="30" y2="138" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" className="text-foreground/25" />
     </svg>
   )
 }
 
 function InvertedTriangleSvg() {
   return (
-    <svg viewBox="0 0 60 140" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="w-full h-full">
-      <path d="M8 8 Q30 6 52 8 L46 58 Q30 70 30 80 Q30 70 14 58 Z M20 84 Q30 80 30 80 Q30 80 40 84 L42 134 Q30 136 18 134 Z" className="fill-foreground/10 stroke-foreground/60" />
-      <line x1="30" y1="4" x2="30" y2="138" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" className="text-foreground/20" />
+    <svg viewBox="0 0 60 140" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="h-full w-full">
+      <path
+        d="M8 8 Q30 6 52 8 L46 58 Q30 70 30 80 Q30 70 14 58 Z M20 84 Q30 80 30 80 Q30 80 40 84 L42 134 Q30 136 18 134 Z"
+        className="fill-foreground/[0.06] stroke-foreground/65"
+      />
+      <line x1="30" y1="4" x2="30" y2="138" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" className="text-foreground/25" />
     </svg>
   )
 }
 
-const SILHOUETTES: Record<string, React.ReactNode> = {
+const SILHOUETTES: Record<BodyTypeId, ReactNode> = {
   hourglass: <HourglassSvg />,
   rectangle: <RectangleSvg />,
   pear: <PearSvg />,
@@ -61,7 +81,14 @@ const SILHOUETTES: Record<string, React.ReactNode> = {
   'inverted-triangle': <InvertedTriangleSvg />,
 }
 
-const CELEBRITY_FALLBACK_IMAGES = [
+function silhouetteForBodyType(slug: string) {
+  const key = slug.toLowerCase().trim().replace(/_/g, '-') as BodyTypeId
+  const valid: BodyTypeId[] = ['hourglass', 'rectangle', 'pear', 'apple', 'inverted-triangle']
+  const id = valid.includes(key) ? key : 'rectangle'
+  return SILHOUETTES[id]
+}
+
+const FALLBACK_CELEB_IMAGES = [
   '/celebrities/celebrity-1.jpg',
   '/celebrities/celebrity-2.jpg',
   '/celebrities/celebrity-3.jpg',
@@ -73,21 +100,28 @@ interface ResultsScreenProps {
   onRedo: () => void
 }
 
+/**
+ * Figma-aligned results (Frame 98, 545px): silhouette card → what works for you → celebrity
+ * references with per-card 3D Y flip revealed in sequence when the block scrolls into view.
+ */
 export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
-  const silhouette = SILHOUETTES[analysis.bodyType] ?? SILHOUETTES['rectangle']
   const prefersReducedMotion = useReducedMotion()
+  const silhouette = silhouetteForBodyType(analysis.bodyType)
+  const label = analysis.bodyTypeLabel
 
   const handleEmail = () => {
-    const subject = encodeURIComponent(`My VORA Style Profile — ${analysis.bodyTypeLabel}`)
+    const subject = encodeURIComponent(`My VORA Style Profile — ${label}`)
     const body = encodeURIComponent(
-      `My body type: ${analysis.bodyTypeLabel}\n\n${analysis.silhouetteDescription}\n\nWhat works for me:\n${analysis.whatWorksForYou.map((t) => `• ${t}`).join('\n')}`
+      `My body type: ${label}\n\n${analysis.silhouetteDescription}\n\nWhat works for me:\n${analysis.whatWorksForYou
+        .map((t) => `• ${t}`)
+        .join('\n')}`
     )
     window.location.href = `mailto:?subject=${subject}&body=${body}`
   }
 
   return (
     <motion.div
-      className="min-h-[100dvh] bg-background flex flex-col items-stretch py-0 px-4 sm:px-6 pb-28 pt-0"
+      className="flex min-h-[100dvh] flex-col items-stretch bg-background px-4 pb-28 pt-0 sm:px-6"
       initial={prefersReducedMotion ? false : { opacity: 0 }}
       animate={prefersReducedMotion ? undefined : { opacity: 1 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
@@ -96,232 +130,115 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
         initial={prefersReducedMotion ? false : { opacity: 0, y: -6 }}
         animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="mb-6 sm:mb-10"
+        className="mb-4 sm:mb-6"
       >
         <VoraScreenHeader onReturn={onRedo} variant="onTheme" center={<VoraLogo />} />
       </motion.div>
 
-      {/* Labels */}
+      {/* ── Intro copy ─────────────────────────────────────────── */}
       <motion.div
-        className="text-center mb-6 space-y-1 max-w-md mx-auto px-2"
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 14, filter: 'blur(14px)' }}
-        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
+        className={`${VORA_RESULTS_MAX} mb-6 space-y-2 text-center`}
+        initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.08 }}
       >
-        <p className="text-[10px] tracking-[0.3em] text-muted-foreground uppercase">
-          Ta-da! Your Body Type
-        </p>
-        <p className="text-xs text-foreground/45 leading-relaxed">
+        <p className="text-[10px] uppercase tracking-[0.3em] text-foreground/85">Ta-da! Your body type</p>
+        <p className="text-[13px] leading-relaxed text-foreground/55">
           {analysis.analysisSource === 'measurement'
             ? "We've analyzed your measurements. Here's what we discovered."
             : "We've analyzed your measurements and photo. Here's what we discovered."}
         </p>
       </motion.div>
 
-      <motion.div
-        className="w-full max-w-sm mx-auto space-y-3 px-1"
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
-        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
-        transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.18 }}
-      >
-
-        {/* ── Silhouette card ── */}
-        <motion.div
-          className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 flex gap-5"
-          initial={prefersReducedMotion ? false : { opacity: 0, y: 14, scale: 0.985, filter: 'blur(14px)' }}
-          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+      {/* ── Stacked cards (545px column) ───────────────────────── */}
+      <div className={`${VORA_RESULTS_MAX} flex flex-col gap-[18px]`}>
+        {/* ① Silhouette */}
+        <motion.section
+          className="rounded-2xl border border-white/[0.06] bg-[oklch(0.12_0_0)] p-6 sm:p-7"
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 14, filter: 'blur(12px)' }}
+          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.14 }}
         >
-          <div className="w-14 h-36 shrink-0 text-foreground/70 mt-1">
-            {silhouette}
-          </div>
-          <div className="flex flex-col justify-center gap-2.5 min-w-0">
-            <div>
-              <p className="text-[9px] tracking-[0.28em] text-muted-foreground uppercase mb-0.5">
-                Your Silhouette
-              </p>
-              <p className="text-sm font-semibold tracking-[0.2em] uppercase text-foreground">
-                {analysis.bodyTypeLabel}
+          <div className="flex items-center gap-6 sm:gap-8">
+            <div className="h-[190px] w-[78px] shrink-0 sm:h-[210px] sm:w-[86px]">{silhouette}</div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <p className="text-[9.5px] uppercase tracking-[0.28em] text-foreground/50">Your silhouette</p>
+              <p className="text-[13px] font-semibold uppercase tracking-[0.22em] text-foreground">{label}</p>
+              <p className="text-[12.5px] leading-[1.6] text-foreground/60">
+                {analysis.silhouetteDescription}
               </p>
             </div>
-            <p className="text-xs text-foreground/60 leading-relaxed">
-              {analysis.silhouetteDescription}
-            </p>
           </div>
-        </motion.div>
+        </motion.section>
 
-        {analysis.measurementAiStyling && (
-          <motion.div
-            className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-2"
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 12, filter: 'blur(12px)' }}
-            animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.04 }}
-          >
-            <p className="text-[9px] tracking-[0.28em] text-muted-foreground uppercase">Your AI stylist</p>
-            <p className="text-xs text-foreground/70 leading-relaxed">{analysis.measurementAiStyling}</p>
-          </motion.div>
-        )}
-
-        {/* ── What works for you ── */}
-        <motion.div
-          className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-3"
-          initial={prefersReducedMotion ? false : { opacity: 0, y: 14, scale: 0.985, filter: 'blur(14px)' }}
-          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.06 }}
+        {/* ② What works for you */}
+        <motion.section
+          className="rounded-2xl border border-white/[0.06] bg-[oklch(0.12_0_0)] p-6 sm:p-7"
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 14, filter: 'blur(12px)' }}
+          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.22 }}
         >
-          <p className="text-[9px] tracking-[0.28em] text-muted-foreground uppercase">
-            What Works For You
-          </p>
-          <ul className="space-y-2.5">
+          <p className="mb-4 text-[9.5px] uppercase tracking-[0.28em] text-foreground/50">What works for you</p>
+          <ul className="space-y-3">
             {analysis.whatWorksForYou.map((tip, i) => (
               <motion.li
                 key={i}
-                className="flex items-start gap-2.5"
-                initial={prefersReducedMotion ? false : { opacity: 0, x: -6 }}
+                className="flex items-start gap-3"
+                initial={prefersReducedMotion ? false : { opacity: 0, x: -4 }}
                 animate={prefersReducedMotion ? undefined : { opacity: 1, x: 0 }}
-                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.22 + i * 0.04 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.3 + i * 0.05 }}
               >
-                <Check className="w-3 h-3 mt-0.5 shrink-0 text-foreground/50" />
-                <span className="text-xs text-foreground/75 leading-relaxed">{tip}</span>
+                <Check className="mt-[2px] h-3.5 w-3.5 shrink-0 text-foreground/70" strokeWidth={2.25} />
+                <span className="text-[13px] leading-[1.55] text-foreground/78">{tip}</span>
               </motion.li>
             ))}
           </ul>
-        </motion.div>
+        </motion.section>
 
-        {/* ── What to avoid ── */}
-        {analysis.whatToAvoid?.length > 0 && (
-          <motion.div
-            className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-3"
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 14, scale: 0.985, filter: 'blur(14px)' }}
-            animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-            transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.08 }}
-          >
-            <p className="text-[9px] tracking-[0.28em] text-muted-foreground uppercase">
-              What to Avoid
-            </p>
-            <ul className="space-y-2.5">
-              {analysis.whatToAvoid.map((tip, i) => (
-                <motion.li
-                  key={i}
-                  className="flex items-start gap-2.5"
-                  initial={prefersReducedMotion ? false : { opacity: 0, x: -6 }}
-                  animate={prefersReducedMotion ? undefined : { opacity: 1, x: 0 }}
-                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.24 + i * 0.04 }}
-                >
-                  <X className="w-3 h-3 mt-0.5 shrink-0 text-foreground/30" />
-                  <span className="text-xs text-foreground/65 leading-relaxed">{tip}</span>
-                </motion.li>
-              ))}
-            </ul>
-          </motion.div>
-        )}
+        {/* ③ Celebrity references (per-card 3D flip) */}
+        <CelebrityReferences
+          bodyTypeLabel={label}
+          celebrities={analysis.celebrities ?? []}
+          prefersReducedMotion={!!prefersReducedMotion}
+        />
 
-        {/* ── Style tips ── */}
-        {analysis.styleRecommendations?.length > 0 && (
-          <motion.div
-            className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-3"
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 14, scale: 0.985, filter: 'blur(14px)' }}
-            animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-            transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-          >
-            <p className="text-[9px] tracking-[0.28em] text-muted-foreground uppercase">
-              Style Tips
-            </p>
-            <ul className="space-y-3">
-              {analysis.styleRecommendations.map((rec, i) => (
-                <motion.li
-                  key={i}
-                  className="flex gap-2.5"
-                  initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
-                  animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
-                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.24 + i * 0.04 }}
-                >
-                  <span className="text-[9px] tracking-[0.2em] uppercase text-foreground/35 shrink-0 mt-0.5 w-14">
-                    {rec.category}
-                  </span>
-                  <span className="text-xs text-foreground/70 leading-relaxed">{rec.tip}</span>
-                </motion.li>
-              ))}
-            </ul>
-          </motion.div>
-        )}
-
-        {/* ── Celebrity references ── */}
-        {analysis.celebrities?.length > 0 && (
-          <motion.div
-            className="rounded-2xl bg-[oklch(0.12_0_0)] border border-white/5 p-5 space-y-4"
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 14, scale: 0.985, filter: 'blur(14px)' }}
-            animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-            transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.12 }}
-          >
-            <div className="text-center space-y-1">
-              <p className="text-[9px] tracking-[0.28em] text-muted-foreground uppercase">
-                See {analysis.bodyTypeLabel} References
-              </p>
-              <p className="text-xs text-foreground/45">
-                Celebrities with the same body type as yours. Get inspired
-              </p>
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              {analysis.celebrities.slice(0, 4).map((celeb, i) => (
-                <motion.div
-                  key={i}
-                  className="relative rounded-xl overflow-hidden aspect-[3/4]"
-                  initial={prefersReducedMotion ? false : { opacity: 0, y: 12, scale: 0.985, filter: 'blur(12px)' }}
-                  animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.26 + i * 0.06 }}
-                  whileHover={prefersReducedMotion ? undefined : { y: -2 }}
-                >
-                  <Image
-                    src={celeb.imageSrc ?? CELEBRITY_FALLBACK_IMAGES[i % CELEBRITY_FALLBACK_IMAGES.length]}
-                    alt={celeb.name}
-                    fill
-                    className="object-cover object-top"
-                    sizes="80px"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-1.5 text-center">
-                    <p className="text-[7.5px] tracking-[0.08em] text-white uppercase leading-tight font-medium">
-                      {celeb.name}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── Unveil style CTA (in-page) ── */}
+        {/* ④ Unveil CTA */}
         <motion.button
-          className="w-full flex items-center justify-center gap-2.5 rounded-full bg-[oklch(0.16_0_0)] border border-white/10 text-foreground text-xs tracking-[0.2em] uppercase py-4 hover:bg-[oklch(0.20_0_0)] transition-colors"
+          type="button"
           onClick={handleEmail}
-          whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
+          className="mx-auto mt-2 flex items-center justify-center gap-2.5 rounded-full border border-white/12 bg-[oklch(0.14_0_0)] px-7 py-3.5 text-[11px] uppercase tracking-[0.22em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)]"
+          initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.6 }}
+          whileHover={prefersReducedMotion ? undefined : { scale: 1.015 }}
           whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
         >
-          <span className="w-2 h-2 rounded-full bg-green-400" />
-          Unveil Style Recommendations For You
+          <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]" />
+          Unveil style recommendations for you
         </motion.button>
-      </motion.div>
+      </div>
 
-      {/* ── Sticky bottom bar ── */}
+      {/* ── Sticky REDO / E-MAIL ───────────────────────────────── */}
       <motion.div
-        className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-white/5 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] z-50"
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 bg-background/95 px-4 pt-4 backdrop-blur-sm pb-[max(1rem,env(safe-area-inset-bottom))]"
         initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
         animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
-        transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
       >
-        <div className="flex gap-3 max-w-sm mx-auto">
+        <div className={`flex gap-3 sm:gap-4 ${VORA_RESULTS_MAX}`}>
           <motion.button
+            type="button"
             onClick={onRedo}
-            className="flex-1 rounded-full border border-foreground/20 bg-transparent text-foreground text-xs tracking-[0.2em] uppercase py-3.5 hover:bg-foreground/5 transition-colors"
+            className="flex-1 rounded-full border border-foreground/20 bg-transparent py-3.5 text-xs uppercase tracking-[0.22em] text-foreground transition-colors hover:bg-foreground/5"
             whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
             whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
           >
             Redo
           </motion.button>
           <motion.button
+            type="button"
             onClick={handleEmail}
-            className="flex-1 rounded-full bg-foreground text-background text-xs tracking-[0.2em] uppercase py-3.5 hover:bg-foreground/90 transition-colors"
+            className="flex-1 rounded-full bg-foreground py-3.5 text-xs uppercase tracking-[0.22em] text-background transition-colors hover:bg-foreground/90"
             whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
             whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
           >
@@ -330,5 +247,199 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
         </div>
       </motion.div>
     </motion.div>
+  )
+}
+
+// ── Celebrity references (flip cards) ─────────────────────────────────────
+
+type Celebrity = NonNullable<BodyAnalysis['celebrities']>[number]
+
+const FLIP_STAGGER_MS = 260
+const FLIP_MS = 700
+
+function CelebrityReferences({
+  bodyTypeLabel,
+  celebrities,
+  prefersReducedMotion,
+}: {
+  bodyTypeLabel: string
+  celebrities: Celebrity[]
+  prefersReducedMotion: boolean
+}) {
+  const items = celebrities.slice(0, 4)
+  const count = items.length
+
+  const [flippedCount, setFlippedCount] = useState(0)
+  const sectionRef = useRef<HTMLElement>(null)
+  const triggeredRef = useRef(false)
+
+  useEffect(() => {
+    if (triggeredRef.current || count === 0) return
+    if (prefersReducedMotion) {
+      setFlippedCount(count)
+      triggeredRef.current = true
+      return
+    }
+
+    const el = sectionRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      triggeredRef.current = true
+      const timers: number[] = []
+      for (let i = 0; i < count; i++) {
+        timers.push(
+          window.setTimeout(() => setFlippedCount((c) => Math.max(c, i + 1)), 600 + i * FLIP_STAGGER_MS)
+        )
+      }
+      return () => timers.forEach((t) => window.clearTimeout(t))
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && !triggeredRef.current) {
+            triggeredRef.current = true
+            for (let i = 0; i < count; i++) {
+              window.setTimeout(
+                () => setFlippedCount((c) => Math.max(c, i + 1)),
+                280 + i * FLIP_STAGGER_MS
+              )
+            }
+            observer.disconnect()
+          }
+        }
+      },
+      { threshold: 0.35 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [count, prefersReducedMotion])
+
+  if (count === 0) return null
+
+  const revealAll = () => {
+    if (flippedCount >= count) return
+    triggeredRef.current = true
+    for (let i = 0; i < count; i++) {
+      window.setTimeout(() => setFlippedCount((c) => Math.max(c, i + 1)), i * 120)
+    }
+  }
+
+  return (
+    <motion.section
+      ref={sectionRef}
+      className="rounded-2xl border border-white/[0.06] bg-[oklch(0.12_0_0)] p-6 sm:p-7"
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 14, filter: 'blur(12px)' }}
+      animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.32 }}
+      onClick={revealAll}
+    >
+      <div className="mb-5 space-y-1 text-center">
+        <p className="text-[9.5px] uppercase tracking-[0.3em] text-foreground/55">
+          See {bodyTypeLabel} References
+        </p>
+        <p className="text-[12.5px] leading-relaxed text-foreground/55">
+          Reveal celebrities with the same body type as yours.
+        </p>
+        <p className="text-[12.5px] italic text-foreground/45">Get inspired</p>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 sm:gap-3">
+        {items.map((celeb, i) => (
+          <CelebrityFlipCard
+            key={`${celeb.name}-${i}`}
+            index={i}
+            name={celeb.name}
+            imageSrc={celeb.imageSrc || FALLBACK_CELEB_IMAGES[i % FALLBACK_CELEB_IMAGES.length]}
+            flipped={i < flippedCount}
+            prefersReducedMotion={prefersReducedMotion}
+          />
+        ))}
+      </div>
+    </motion.section>
+  )
+}
+
+function CelebrityFlipCard({
+  index,
+  name,
+  imageSrc,
+  flipped,
+  prefersReducedMotion,
+}: {
+  index: number
+  name: string
+  imageSrc: string
+  flipped: boolean
+  prefersReducedMotion: boolean
+}) {
+  if (prefersReducedMotion) {
+    return (
+      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
+        <Image
+          src={imageSrc}
+          alt={name}
+          fill
+          className="object-cover object-top"
+          sizes="(max-width:640px) 24vw, 120px"
+        />
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent p-1.5 pt-6">
+          <p className="text-center text-[8.5px] font-medium uppercase tracking-[0.12em] leading-[1.15] text-white">
+            {name}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="aspect-[3/4] w-full min-w-0 [perspective:900px]">
+      <div
+        className="relative h-full w-full origin-center transition-transform [transform-style:preserve-3d]"
+        style={{
+          transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          transitionDuration: `${FLIP_MS}ms`,
+          transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        }}
+      >
+        {/* FRONT — dashed BODY N placeholder */}
+        <div
+          className="absolute inset-0 flex items-center justify-center rounded-xl border border-dashed border-white/30 bg-[oklch(0.11_0_0)]"
+          style={{
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
+            transform: 'rotateY(0deg)',
+            pointerEvents: flipped ? 'none' : 'auto',
+          }}
+        >
+          <span className="text-[9px] font-medium tracking-[0.22em] uppercase text-foreground/55">
+            Body {index + 1}
+          </span>
+        </div>
+
+        {/* BACK — celebrity portrait */}
+        <div
+          className="absolute inset-0 overflow-hidden rounded-xl bg-black ring-1 ring-white/10 shadow-[0_14px_40px_-18px_rgba(0,0,0,0.75)]"
+          style={{
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)',
+            pointerEvents: flipped ? 'auto' : 'none',
+          }}
+        >
+          <Image
+            src={imageSrc}
+            alt={name}
+            fill
+            className="object-cover object-top"
+            sizes="(max-width:640px) 24vw, 120px"
+          />
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-1.5 pt-8">
+            <p className="text-center text-[8.5px] font-medium uppercase tracking-[0.12em] leading-[1.15] text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
+              {name}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

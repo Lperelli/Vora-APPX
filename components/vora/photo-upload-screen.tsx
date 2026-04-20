@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
 import { PhotoUploadFlip, type PhotoSlotsState } from './photo-upload-flip'
+import { VORA_FLOW_MAX } from './vora-layout'
 
 interface PhotoUploadScreenProps {
   onSubmit: (files: File[]) => void
@@ -60,28 +61,30 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
       {hasPhotos && (
         <>
           <motion.div
-            className="mx-auto mb-8 max-w-xs space-y-4 px-2 text-center sm:mb-10"
+            className={`${VORA_FLOW_MAX} mb-8 px-2 text-center sm:mb-10`}
             initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
             animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: prefersReducedMotion ? 0 : 0.12 }}
           >
-            <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Final Review</p>
-            <p className="text-sm leading-relaxed text-foreground/70">
-              Now upload up to 3 pictures of your full body. Pictures where you are wearing tighter clothes will work
-              the best for us. Avoid pictures where you have loose clothes.
-            </p>
-            <p className="mt-4 text-sm leading-relaxed text-foreground/50">
-              If <em className="font-semibold italic text-foreground/65">not</em>, you can take a full body picture
-              right now!
-            </p>
-            <p className="text-sm leading-relaxed text-foreground/50">
-              Find good illumination and stand with confidence ;)
-            </p>
+            <div className="mx-auto max-w-2xl space-y-4 sm:space-y-5">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Final Review</p>
+              <p className="text-sm sm:text-base leading-relaxed text-foreground/70">
+                Now upload up to 3 pictures of your full body. Pictures where you are wearing tighter clothes will work
+                the best for us. Avoid pictures where you have loose clothes.
+              </p>
+              <p className="mt-4 text-sm sm:text-base leading-relaxed text-foreground/50">
+                If <em className="font-semibold italic text-foreground/65">not</em>, you can take a full body picture
+                right now!
+              </p>
+              <p className="text-sm sm:text-base leading-relaxed text-foreground/50">
+                Find good illumination and stand with confidence ;)
+              </p>
+            </div>
           </motion.div>
 
           <motion.button
             onClick={handleSubmit}
-            className="mx-auto min-h-[48px] w-full max-w-xs rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-6 py-4 text-xs uppercase tracking-[0.25em] text-foreground transition-colors hover:bg-[oklch(0.20_0_0)]"
+            className="mx-auto min-h-[48px] w-full max-w-md rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-6 py-4 text-xs uppercase tracking-[0.25em] text-foreground transition-colors hover:bg-[oklch(0.20_0_0)]"
             initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
             animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: prefersReducedMotion ? 0 : 0.18 }}

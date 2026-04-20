@@ -4,6 +4,7 @@ import { Clock, Upload } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
+import { VORA_FLOW_MAX } from './vora-layout'
 
 interface IntroScreenProps {
   onBack: () => void
@@ -36,12 +37,14 @@ export function IntroScreen({ onBack, onUploadPhotos, onEnterMeasurements }: Int
         <VoraScreenHeader onReturn={onBack} variant="onTheme" center={<VoraLogo />} />
       </motion.div>
 
-      <div className="flex-1 flex flex-col items-center justify-center text-center max-w-md w-full mx-auto gap-8 sm:gap-10 px-2 min-h-0 py-6">
-        <motion.div className="space-y-5" variants={item}>
-          <h2 className="text-xl font-semibold tracking-[0.12em] uppercase text-foreground">
+      <div
+        className={`flex-1 flex flex-col items-center justify-center text-center ${VORA_FLOW_MAX} gap-8 sm:gap-10 px-3 sm:px-4 min-h-0 py-6`}
+      >
+        <motion.div className="w-full max-w-2xl lg:max-w-3xl mx-auto space-y-5 sm:space-y-6" variants={item}>
+          <h2 className="text-lg sm:text-xl md:text-2xl font-semibold tracking-[0.12em] uppercase text-foreground">
             We know online fitting is a struggle.
           </h2>
-          <p className="text-sm text-foreground/70 leading-relaxed">
+          <p className="text-sm sm:text-base text-foreground/70 leading-relaxed">
             {"That's why we make the science of styling available to everyone. Try VORA and get personalized outfits that will flatter you the most according to your body type."}
           </p>
           <div className="flex items-center justify-center gap-2 text-foreground/60">
@@ -50,7 +53,7 @@ export function IntroScreen({ onBack, onUploadPhotos, onEnterMeasurements }: Int
           </div>
         </motion.div>
 
-        <motion.div className="flex flex-col gap-4 w-full max-w-xs mx-auto" variants={item}>
+        <motion.div className="flex flex-col gap-4 w-full max-w-md lg:max-w-lg mx-auto" variants={item}>
           <motion.button
             onClick={onUploadPhotos}
             className="flex items-center justify-center gap-3 w-full rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] text-foreground text-xs tracking-[0.2em] uppercase py-4 px-6 hover:bg-[oklch(0.18_0_0)] transition-colors"
