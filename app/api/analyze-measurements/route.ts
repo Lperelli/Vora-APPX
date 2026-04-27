@@ -7,10 +7,10 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 const InputSchema = z.object({
-  bust: z.coerce.number().positive().max(300),
-  waist: z.coerce.number().positive().max(300),
-  hips: z.coerce.number().positive().max(300),
-  height: z.coerce.number().positive().max(260),
+  shouldersCm: z.coerce.number().positive().max(250).optional(),
+  bustCm: z.coerce.number().positive().max(250).optional(),
+  waistCm: z.coerce.number().positive().max(300),
+  hipsCm: z.coerce.number().positive().max(300),
 })
 
 export async function POST(req: Request) {
@@ -32,23 +32,30 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Invalid measurements', detail: parsed.error.flatten() }, { status: 400 })
     }
 
-    const { bust, waist, hips, height } = parsed.data
+    const { shouldersCm, bustCm, waistCm, hipsCm } = parsed.data
     const modelId = defaultMeasurementsModel()
 
     const ai = await classifyBodyFromMeasurements({
       apiKey,
       modelId,
-      bust,
-      waist,
-      hips,
-      height,
+      shouldersCm: shouldersCm ?? null,
+      bustCm: bustCm ?? null,
+      waistCm,
+      hipsCm,
     })
 
-    const base = buildAnalysisFromBodyType(ai.bodyType, 'high')
+    if (!ai.isValidInput || !ai.bodyType || !ai.confidence) {
+      return Response.json(
+        { error: 'Invalid measurements.', detail: ai.explanation ?? 'Please check your measurements and try again.' },
+        { status: 422 }
+      )
+    }
+
+    const base = buildAnalysisFromBodyType(ai.bodyType, ai.confidence)
     const analysis: BodyAnalysis = {
       ...base,
-      silhouetteDescription: ai.explanation,
-      measurementAiStyling: ai.stylingRecommendation,
+      silhouetteDescription: ai.explanation ?? base.silhouetteDescription,
+      measurementAiStyling: ai.stylingRecommendation ?? base.measurementAiStyling,
       analysisSource: 'measurement',
     }
 

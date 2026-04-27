@@ -106,7 +106,7 @@ export default function VoraApp() {
   }, [])
 
   const handleMeasurementAnalyze = useCallback(
-    async (payload: { bust: number; waist: number; hips: number; height: number }) => {
+    async (payload: { shouldersCm?: number; bustCm?: number; waistCm: number; hipsCm: number }) => {
       setProcessingReturnStep('measurements')
       setStep('processing')
       setIsAnalysisComplete(false)

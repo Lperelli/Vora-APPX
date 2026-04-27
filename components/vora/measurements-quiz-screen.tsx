@@ -8,10 +8,10 @@ import { VoraScreenHeader } from './screen-return-button'
 import { VORA_MEASUREMENTS_FORM_MAX } from './vora-layout'
 
 export interface MeasurementsPayload {
-  bust: number
-  waist: number
-  hips: number
-  height: number
+  shouldersCm?: number
+  bustCm?: number
+  waistCm: number
+  hipsCm: number
 }
 
 interface MeasurementsQuizScreenProps {
@@ -30,23 +30,28 @@ function toNum(s: string): number {
 
 export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: MeasurementsQuizScreenProps) {
   const prefersReducedMotion = useReducedMotion()
+  const [shoulders, setShoulders] = useState('')
   const [bust, setBust] = useState('')
   const [waist, setWaist] = useState('')
   const [hips, setHips] = useState('')
-  const [height, setHeight] = useState('')
   const [focusField, setFocusField] = useState<MeasurementFocusField>(null)
 
+  const shouldersN = toNum(shoulders)
   const bustN = toNum(bust)
   const waistN = toNum(waist)
   const hipsN = toNum(hips)
-  const heightN = toNum(height)
 
-  const allValid = bustN > 0 && waistN > 0 && hipsN > 0 && heightN > 0
+  const allValid = waistN > 0 && hipsN > 0 && (bustN > 0 || shouldersN > 0)
 
   const handleShowResults = useCallback(() => {
     if (!allValid) return
-    onSubmitMeasurements({ bust: bustN, waist: waistN, hips: hipsN, height: heightN })
-  }, [allValid, bustN, waistN, hipsN, heightN, onSubmitMeasurements])
+    onSubmitMeasurements({
+      shouldersCm: shouldersN > 0 ? shouldersN : undefined,
+      bustCm: bustN > 0 ? bustN : undefined,
+      waistCm: waistN,
+      hipsCm: hipsN,
+    })
+  }, [allValid, shouldersN, bustN, waistN, hipsN, onSubmitMeasurements])
 
   const fieldShell = useMemo(
     () =>
@@ -75,7 +80,24 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
             <div className="mx-auto w-full space-y-6 text-left sm:space-y-7">
               <div>
                 <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <span className="text-[11px] tracking-[0.06em] text-foreground/92">Shoulders (cm)</span>
+                  <span className="text-[10px] italic tracking-wide text-foreground/38">Optional, if you know it</span>
+                </div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={shoulders}
+                  onChange={(e) => setShoulders(sanitizeCm(e.target.value))}
+                  className={fieldShell}
+                  aria-label="Shoulders in centimeters"
+                />
+              </div>
+
+              <div>
+                <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                   <span className="text-[11px] tracking-[0.06em] text-foreground/92">Bust (cm)</span>
+                  <span className="text-[10px] italic tracking-wide text-foreground/38">Optional, but recommended</span>
                 </div>
                 <input
                   type="text"
@@ -128,22 +150,6 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
                 />
               </div>
 
-              <div>
-                <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                  <span className="text-[11px] tracking-[0.06em] text-foreground/92">Height (cm)</span>
-                </div>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={height}
-                  onChange={(e) => setHeight(sanitizeCm(e.target.value))}
-                  onFocus={() => setFocusField('height')}
-                  onBlur={() => setFocusField((f) => (f === 'height' ? null : f))}
-                  className={fieldShell}
-                  aria-label="Height in centimeters"
-                />
-              </div>
             </div>
 
             <motion.button
@@ -168,7 +174,6 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
               bust={bustN}
               waist={waistN}
               hips={hipsN}
-              height={heightN}
               focusField={focusField}
             />
           </motion.div>

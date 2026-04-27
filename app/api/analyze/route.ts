@@ -64,9 +64,20 @@ export async function POST(req: Request) {
       images,
     })
 
+    if (!classification.isValidInput) {
+      return Response.json(
+        {
+          error: 'Invalid photo input.',
+          detail: classification.photoGuidance ?? 'Please upload clearer full-body photos.',
+          inputIssues: classification.inputIssues,
+        },
+        { status: 422 }
+      )
+    }
+
     const analysis: BodyAnalysis = buildAnalysisFromBodyType(
-      classification.bodyType,
-      classification.confidence
+      classification.bodyType ?? 'rectangle',
+      classification.confidence ?? 'low'
     )
 
     return Response.json({ analysis })

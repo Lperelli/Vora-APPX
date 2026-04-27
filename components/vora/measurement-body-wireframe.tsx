@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 
-export type MeasurementFocusField = 'bust' | 'waist' | 'hips' | 'height' | null
+export type MeasurementFocusField = 'bust' | 'waist' | 'hips' | null
 
 type Geom = {
   hb: number
@@ -20,8 +20,8 @@ function clamp(n: number, a: number, b: number) {
   return Math.min(b, Math.max(a, n))
 }
 
-function computeGeom(bust: number, waist: number, hips: number, height: number): Geom {
-  const h = Math.max(height, 120)
+function computeGeom(bust: number, waist: number, hips: number): Geom {
+  const h = 172
   const spanBase = 220
   const hNorm = clamp(h / 172, 0.82, 1.28)
   const yTop = 24
@@ -66,7 +66,6 @@ interface MeasurementBodyWireframeProps {
   bust: number
   waist: number
   hips: number
-  height: number
   focusField: MeasurementFocusField
 }
 
@@ -78,14 +77,12 @@ export function MeasurementBodyWireframe({
   bust,
   waist,
   hips,
-  height,
   focusField,
 }: MeasurementBodyWireframeProps) {
   const b = bust > 0 ? bust : 92
   const w = waist > 0 ? waist : 70
   const h = hips > 0 ? hips : 98
-  const ht = height > 0 ? height : 168
-  const g = useMemo(() => computeGeom(b, w, h, ht), [b, w, h, ht])
+  const g = useMemo(() => computeGeom(b, w, h), [b, w, h])
   const d = outlinePath(g, CX)
   const { hb, hw, hh, yBust, yWaist, yHip, yTop, yBottom } = g
 
@@ -105,25 +102,7 @@ export function MeasurementBodyWireframe({
         y2={yBottom}
         stroke="currentColor"
         strokeLinecap="round"
-        animate={
-          focusField === 'height' ? { opacity: 1, strokeWidth: 1.6 } : { opacity: 0.35, strokeWidth: 1 }
-        }
-        transition={{ duration: 0.35, ease: lineEase }}
-      />
-      <motion.circle
-        cx={CX}
-        cy={yTop}
-        r={2.2}
-        fill="currentColor"
-        animate={{ opacity: focusField === 'height' ? 1 : 0.35 }}
-        transition={{ duration: 0.35, ease: lineEase }}
-      />
-      <motion.circle
-        cx={CX}
-        cy={yBottom}
-        r={2.2}
-        fill="currentColor"
-        animate={{ opacity: focusField === 'height' ? 1 : 0.35 }}
+        animate={{ opacity: 0.2, strokeWidth: 1 }}
         transition={{ duration: 0.35, ease: lineEase }}
       />
 
