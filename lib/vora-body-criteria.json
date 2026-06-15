@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "_doc": "VORA — Single source of truth for body-type criteria. EDIT THIS FILE to tune how body types are decided. It is read by BOTH the deterministic rule engine (lib/body-type-rules.ts) AND the Groq vision prompt (lib/groq-classify.ts), so measurements and photos always use the same criteria. The engine — not the LLM — makes the final decision, so results stay exact and reproducible.",
+
+  "thresholds": {
+    "_doc": "All knobs that decide a body type. Percentages compare the upper body (broader of shoulders/bust) against the hips. Ratios are waist ÷ hips.",
+    "balanceTolerancePct": 5,
+    "_balanceTolerancePct": "If the upper body and hips differ by LESS than this %, the frame is 'balanced' and the waist decides the type. At or above it, the wider half wins (pear or inverted-triangle).",
+    "strongDominancePct": 10,
+    "_strongDominancePct": "Upper/hip difference at or above this % counts as a clear, high-confidence dominance.",
+    "waistDefinedRatio": 0.75,
+    "_waistDefinedRatio": "On a balanced frame, waist/hip AT OR BELOW this = clearly defined waist → hourglass.",
+    "waistFullRatio": 0.85,
+    "_waistFullRatio": "On a balanced frame, waist/hip AT OR ABOVE this = little waist definition → apple. Between the two ratios → rectangle.",
+    "confidence": {
+      "highMargin": 0.05,
+      "mediumMargin": 0.02,
+      "_doc": "How far the deciding value must clear its threshold for 'high' vs 'medium' confidence. Below mediumMargin → 'low'."
+    }
+  },
+
+  "bodyTypes": {
+    "hourglass": {
+      "label": "Hourglass",
+      "measurementRule": "Upper body and hips are balanced (within balanceTolerancePct) AND waist/hip ≤ waistDefinedRatio.",
+      "promptDefinition": "Shoulders/upper torso and hips appear visually balanced, and the waist is clearly narrower than both. Strong waist definition with balanced upper and lower proportions."
+    },
+    "rectangle": {
+      "label": "Rectangle",
+      "measurementRule": "Upper body and hips are balanced (within balanceTolerancePct) AND waistDefinedRatio < waist/hip < waistFullRatio.",
+      "promptDefinition": "Shoulders/upper torso, waist, and hips appear similar in width, with minimal waist definition. The silhouette is straight and balanced, without strong upper or lower dominance."
+    },
+    "pear": {
+      "label": "Pear",
+      "measurementRule": "Hips exceed the upper body by at least balanceTolerancePct.",
+      "promptDefinition": "Hips appear clearly wider than shoulders/upper torso. The lower body visually dominates the silhouette."
+    },
+    "apple": {
+      "label": "Apple",
+      "measurementRule": "Upper body and hips are balanced (within balanceTolerancePct) AND waist/hip ≥ waistFullRatio (little waist definition).",
+      "promptDefinition": "The midsection/torso appears visually dominant and the waist is not clearly defined; the waist is close in width to the bust/upper torso or hips. Judge by proportion and waist definition only, never by weight."
+    },
+    "inverted-triangle": {
+      "label": "Inverted Triangle",
+      "measurementRule": "Upper body exceeds the hips by at least balanceTolerancePct.",
+      "promptDefinition": "Shoulders/upper torso appear clearly wider than hips. The upper body visually dominates the silhouette and hips appear narrower."
+    }
+  },
+
+  "decisionOrder": [
+    "pear (hips dominant)",
+    "inverted-triangle (upper dominant)",
+    "hourglass (balanced + defined waist)",
+    "apple (balanced + full waist)",
+    "rectangle (balanced + soft waist)"
+  ],
+  "_decisionOrder": "Evaluation priority. A clearly dominant half (pear/inverted-triangle) is decided before waist-based types. This order is structural and lives in code; tune the numbers above to change outcomes.",
+
+  "photo": {
+    "_doc": "Guidance for the Groq vision model. The model ONLY estimates the visual evidence below — it never picks the final type. The engine maps the evidence to a type using classifyFromVisualEvidence().",
+    "visualEvidence": {
+      "shouldersVsHips": ["shoulders_wider", "hips_wider", "balanced", "unclear"],
+      "waistDefinition": ["defined", "moderate", "minimal", "unclear"],
+      "torsoDominance": ["upper", "middle", "lower", "balanced", "unclear"]
+    },
+    "confidenceCriteria": {
+      "high": "Full-body photo(s), neutral pose, fitted clothing, good lighting, clear shoulder/waist/hip silhouette, front view available.",
+      "medium": "Mostly usable photo(s), minor pose/clothing/angle limitations, silhouette still understandable.",
+      "low": "Usable but limited evidence: loose clothing, partial angle, mirror distortion, or only one imperfect view."
+    },
+    "inputIssues": [
+      "non_human_image",
+      "multiple_people",
+      "face_only",
+      "not_full_body",
+      "body_cropped",
+      "sitting_or_bent_pose",
+      "extreme_angle",
+      "loose_clothing",
+      "poor_lighting",
+      "low_resolution",
+      "silhouette_hidden",
+      "child_or_minor",
+      "not_womenswear_profile",
+      "edited_or_distorted_image",
+      "insufficient_views"
+    ]
+  }
+}

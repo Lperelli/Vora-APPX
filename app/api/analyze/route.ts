@@ -1,5 +1,6 @@
 import { type BodyAnalysis, buildAnalysisFromBodyType } from '@/lib/body-type-analysis'
 import { classifyBodyWithGroq } from '@/lib/groq-classify'
+import { classifyFromVisualEvidence, lowerConfidence, type Confidence } from '@/lib/body-type-rules'
 import { resolveGroqApiKey } from '@/lib/groq-env'
 
 export type { BodyAnalysis } from '@/lib/body-type-analysis'
@@ -75,10 +76,22 @@ export async function POST(req: Request) {
       )
     }
 
-    const analysis: BodyAnalysis = buildAnalysisFromBodyType(
-      classification.bodyType ?? 'rectangle',
-      classification.confidence ?? 'low'
-    )
+    // Body type is decided deterministically from the model's visual evidence
+    // (same rule engine as measurements). The model's own label is only a
+    // fallback when the evidence is too unclear to map.
+    const evidenceDecision = classifyFromVisualEvidence(classification.visualEvidence)
+    const bodyType = evidenceDecision.bodyType ?? classification.bodyType ?? 'rectangle'
+
+    // Be conservative: never report higher confidence than either source.
+    const modelConfidence = (classification.confidence ?? 'low') as Confidence
+    const confidence: Confidence = evidenceDecision.bodyType
+      ? lowerConfidence(evidenceDecision.confidence, modelConfidence)
+      : 'low'
+
+    const analysis: BodyAnalysis = {
+      ...buildAnalysisFromBodyType(bodyType, confidence),
+      analysisSource: 'photo',
+    }
 
     return Response.json({ analysis })
   } catch (error) {

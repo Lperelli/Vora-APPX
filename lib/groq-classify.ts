@@ -1,8 +1,12 @@
 import { z } from 'zod'
 import { AiBodyClassificationGroqSchema, bodyTypeEnum, type AiBodyClassification } from '@/lib/body-type-analysis'
+import { buildBodyTypeDefinitions, buildConfidenceCriteria, photoInputIssues } from '@/lib/body-criteria'
 
 const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
+// Definitions, confidence wording and input-issue codes are sourced from the
+// editable criteria document (lib/vora-body-criteria.json) so the vision prompt
+// and the deterministic engine never drift apart.
 const SYSTEM = `
 You are VORA's visual body proportion analyst for womenswear styling.
 
@@ -34,20 +38,7 @@ IMPORTANT:
 
 BODY TYPE DEFINITIONS:
 
-1. "hourglass"
-Use when shoulders/upper torso and hips appear visually balanced, and the waist is clearly narrower than both. The silhouette has strong waist definition with balanced upper and lower proportions.
-
-2. "rectangle"
-Use when shoulders/upper torso, waist, and hips appear relatively similar in width, with minimal waist definition. The silhouette appears straighter and balanced without a strong upper or lower dominance.
-
-3. "pear"
-Use when hips appear clearly wider than shoulders/upper torso. The lower body visually dominates the silhouette. Waist may be defined or moderately defined.
-
-4. "apple"
-Use when the midsection/torso appears visually dominant and the waist is not clearly defined. The waist appears close in width to the bust/upper torso or hips. Do not use this based on weight; use only proportion and waist definition.
-
-5. "inverted-triangle"
-Use when shoulders/upper torso appear clearly wider than hips. The upper body visually dominates the silhouette and hips appear narrower.
+${buildBodyTypeDefinitions()}
 
 TIEBREAK RULES:
 - If hips are clearly wider than shoulders, choose "pear" over "hourglass".
@@ -59,9 +50,7 @@ TIEBREAK RULES:
 - If the photo is not usable, do not guess. Return isValidInput false.
 
 CONFIDENCE CRITERIA:
-- "high": full-body photo(s), neutral pose, fitted clothing, good lighting, clear shoulder/waist/hip silhouette, front view available.
-- "medium": mostly usable photo(s), minor pose/clothing/angle limitations, silhouette still understandable.
-- "low": usable but limited evidence, loose clothing, partial angle, mirror distortion, or only one imperfect view.
+${buildConfidenceCriteria()}
 
 OUTPUT:
 Return ONLY a valid JSON object.
@@ -87,21 +76,7 @@ Use this exact schema:
 
 VALID INPUT ISSUES:
 Use only these strings when relevant:
-- "non_human_image"
-- "multiple_people"
-- "face_only"
-- "not_full_body"
-- "body_cropped"
-- "sitting_or_bent_pose"
-- "extreme_angle"
-- "loose_clothing"
-- "poor_lighting"
-- "low_resolution"
-- "silhouette_hidden"
-- "child_or_minor"
-- "not_womenswear_profile"
-- "edited_or_distorted_image"
-- "insufficient_views"
+${photoInputIssues().map((code) => `- "${code}"`).join('\n')}
 
 If isValidInput is false:
 - bodyType must be null

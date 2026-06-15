@@ -9,6 +9,7 @@ import { PhotoUploadScreen } from '@/components/vora/photo-upload-screen'
 import { MeasurementsQuizScreen } from '@/components/vora/measurements-quiz-screen'
 import { ProcessingScreen } from '@/components/vora/processing-screen'
 import { ResultsScreen } from '@/components/vora/results-screen'
+import { StyleRecommendationsScreen } from '@/components/vora/style-recommendations-screen'
 import { VoraLogo } from '@/components/vora/vora-logo'
 import type { BodyAnalysis } from '@/app/api/analyze/route'
 import { buildAnalysisFromBodyType } from '@/lib/body-type-analysis'
@@ -21,6 +22,7 @@ type Step =
   | 'upload'     // Screen 4: photo upload
   | 'processing' // Screen 5: analyzing animation
   | 'results'    // Screen 6: body type results
+  | 'recommendations' // Screen 7: editorial style picks (Figma 327:423)
 
 export default function VoraApp() {
   const [step, setStep] = useState<Step>('welcome')
@@ -106,7 +108,7 @@ export default function VoraApp() {
   }, [])
 
   const handleMeasurementAnalyze = useCallback(
-    async (payload: { shouldersCm?: number; bustCm?: number; waistCm: number; hipsCm: number }) => {
+    async (payload: { bustCm: number; waistCm: number; hipsCm: number; heightCm?: number }) => {
       setProcessingReturnStep('measurements')
       setStep('processing')
       setIsAnalysisComplete(false)
@@ -289,6 +291,15 @@ export default function VoraApp() {
             {step === 'results' && analysisResult && (
               <ResultsScreen
                 analysis={analysisResult}
+                onRedo={handleRedo}
+                onShowRecommendations={() => setStep('recommendations')}
+              />
+            )}
+
+            {step === 'recommendations' && analysisResult && (
+              <StyleRecommendationsScreen
+                analysis={analysisResult}
+                onBack={() => setStep('results')}
                 onRedo={handleRedo}
               />
             )}

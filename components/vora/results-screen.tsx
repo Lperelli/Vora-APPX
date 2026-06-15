@@ -98,13 +98,15 @@ const FALLBACK_CELEB_IMAGES = [
 interface ResultsScreenProps {
   analysis: BodyAnalysis
   onRedo: () => void
+  /** Opens the editorial style-recommendations screen (Figma 327:423). */
+  onShowRecommendations: () => void
 }
 
 /**
  * Figma-aligned results (Frame 98, 545px): silhouette card → what works for you → celebrity
  * references with per-card 3D Y flip revealed in sequence when the block scrolls into view.
  */
-export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
+export function ResultsScreen({ analysis, onRedo, onShowRecommendations }: ResultsScreenProps) {
   const prefersReducedMotion = useReducedMotion()
   const silhouette = silhouetteForBodyType(analysis.bodyType)
   const label = analysis.bodyTypeLabel
@@ -209,7 +211,7 @@ export function ResultsScreen({ analysis, onRedo }: ResultsScreenProps) {
         {/* ④ Unveil CTA */}
         <motion.button
           type="button"
-          onClick={handleEmail}
+          onClick={onShowRecommendations}
           className="mx-auto mt-2 flex min-h-[48px] w-full max-w-[min(100%,520px)] items-center justify-center gap-2 rounded-full border border-white/12 bg-[oklch(0.14_0_0)] px-4 py-3 text-center text-[9px] uppercase leading-snug tracking-[0.16em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)] sm:w-auto sm:gap-2.5 sm:px-7 sm:py-3.5 sm:text-[11px] sm:leading-normal sm:tracking-[0.22em]"
           initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
           animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
