@@ -66,9 +66,11 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
 
       {/* Figma: 348px form + 70px gap + wireframe (row); mobile stacks with smaller gap; scrolls on short viewports */}
       <div className="flex min-h-0 flex-1 flex-col items-center justify-start overflow-y-auto overscroll-y-contain px-4 pb-[max(5.5rem,env(safe-area-inset-bottom))] pt-4 sm:justify-center sm:px-6 sm:pt-4">
-        <div className="flex w-full max-w-full flex-col items-center justify-center gap-10 md:flex-row md:items-start md:justify-center md:gap-[70px]">
+        {/* Figma: form centered on the page (col 2), hourglass to the right (col 3),
+            both vertically centered. The empty col 1 keeps the form dead-center. */}
+        <div className="flex w-full flex-col items-center justify-center gap-10 md:grid md:grid-cols-[1fr_348px_1fr] md:items-center md:gap-0">
           <motion.div
-            className={`${VORA_MEASUREMENTS_FORM_MAX} shrink-0 text-center`}
+            className={`${VORA_MEASUREMENTS_FORM_MAX} shrink-0 text-center md:col-start-2`}
             initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
             animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.06, ease: [0.16, 1, 0.3, 1] }}
@@ -165,7 +167,7 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
           </motion.div>
 
           <motion.div
-            className="flex min-h-[200px] shrink-0 items-start justify-center md:min-h-[280px] md:pt-0"
+            className="flex min-h-[200px] shrink-0 items-center justify-center md:col-start-3 md:min-h-0 md:justify-start md:pl-[70px]"
             initial={prefersReducedMotion ? false : { opacity: 0, y: 12 }}
             animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}

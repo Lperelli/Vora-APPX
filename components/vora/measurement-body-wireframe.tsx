@@ -49,7 +49,7 @@ export function MeasurementBodyWireframe({ focusField }: MeasurementBodyWirefram
   return (
     <motion.svg
       viewBox="0 0 140 360"
-      className="h-auto max-h-[min(52vh,440px)] w-[min(100%,210px)] text-foreground/40 md:w-[min(100%,240px)]"
+      className="h-auto max-h-[min(48vh,420px)] w-[min(100%,180px)] text-foreground/40 md:w-[170px]"
       aria-hidden
     >
       {/* Vertical center axis (extends beyond the silhouette, like Figma Line 5) */}
