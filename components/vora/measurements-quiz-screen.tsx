@@ -56,7 +56,7 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
 
   const fieldShell = useMemo(
     () =>
-      'w-full h-[48px] sm:h-[52px] rounded-[14px] border border-white/[0.12] bg-[#141414] px-3.5 text-sm text-foreground outline-none transition-[border-color,background-color,box-shadow] duration-300 ease-out placeholder:text-foreground/22 focus:border-foreground focus:bg-[#161616] focus:shadow-[0_0_0_1px_rgba(255,255,255,0.06)] disabled:opacity-40 sm:px-4',
+      'w-full h-[48px] sm:h-[50px] rounded-[10px] border border-white/[0.18] bg-white/[0.02] px-3.5 text-sm text-foreground outline-none transition-[border-color,background-color,box-shadow] duration-300 ease-out placeholder:text-foreground/22 focus:border-foreground focus:bg-white/[0.04] focus:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] disabled:opacity-40 sm:px-4',
     []
   )
 
@@ -75,7 +75,7 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
           >
             <p className="mb-2.5 text-[10px] uppercase tracking-[0.38em] text-foreground/55">Measurements</p>
             <p className="mb-8 px-1 text-[13px] leading-relaxed tracking-[0.01em] text-foreground/42 sm:mb-10">
-              Please provide your measurements, madame.
+              Please provide your measurements, madam.
             </p>
 
             <div className="mx-auto w-full space-y-6 text-left sm:space-y-7">
@@ -156,7 +156,7 @@ export function MeasurementsQuizScreen({ onBack, onSubmitMeasurements }: Measure
               type="button"
               disabled={!allValid}
               onClick={handleShowResults}
-              className="mt-8 h-[48px] w-full rounded-[14px] border border-white/[0.1] bg-[#1a1a1a] px-2 text-[10px] uppercase tracking-[0.18em] text-foreground/92 transition-all duration-300 hover:border-white/[0.14] hover:bg-[#242424] disabled:cursor-not-allowed disabled:opacity-[0.32] sm:mt-10 sm:h-[52px] sm:text-[11px] sm:tracking-[0.22em]"
+              className="mt-8 h-[48px] w-full rounded-[10px] border border-white/[0.12] bg-[#1a1a1a] px-2 text-[10px] uppercase tracking-[0.18em] text-foreground/92 transition-all duration-300 hover:border-white/[0.16] hover:bg-[#242424] disabled:cursor-not-allowed disabled:opacity-[0.32] sm:mt-10 sm:h-[50px] sm:text-[11px] sm:tracking-[0.22em]"
               whileHover={!allValid || prefersReducedMotion ? undefined : { scale: 1.01 }}
               whileTap={!allValid || prefersReducedMotion ? undefined : { scale: 0.992 }}
             >
