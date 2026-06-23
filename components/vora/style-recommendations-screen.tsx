@@ -29,16 +29,6 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRedo }: StyleRe
       .toUpperCase()
   }, [])
 
-  const handleEmail = () => {
-    const subject = encodeURIComponent(`My VORA Top 5 — ${label} Chic`)
-    const body = encodeURIComponent(
-      `My top 5 must-haves as a ${label} chic:\n\n${products
-        .map((p) => `• ${p.brand} — ${p.name} (${p.price})`)
-        .join('\n')}`
-    )
-    window.location.href = `mailto:?subject=${subject}&body=${body}`
-  }
-
   return (
     <motion.div
       className="flex min-h-[100dvh] flex-col items-stretch overflow-x-hidden bg-background px-3 pb-32 pt-0 sm:px-6 sm:pb-28"
@@ -118,31 +108,22 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRedo }: StyleRe
         ))}
       </div>
 
-      {/* ── Sticky REDO / E-MAIL ───────────────────────────────── */}
+      {/* ── Sticky REDO ────────────────────────────────────────── */}
       <motion.div
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 bg-background/95 px-4 pt-4 backdrop-blur-sm pb-[max(1rem,env(safe-area-inset-bottom))]"
         initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
         animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
       >
-        <div className={`flex gap-3 sm:gap-4 ${VORA_RESULTS_MAX}`}>
+        <div className={`flex ${VORA_RESULTS_MAX}`}>
           <motion.button
             type="button"
             onClick={onRedo}
-            className="flex-1 rounded-full border border-foreground/20 bg-transparent py-3.5 text-xs uppercase tracking-[0.22em] text-foreground transition-colors hover:bg-foreground/5"
+            className="w-full rounded-full border border-foreground/20 bg-transparent py-3.5 text-xs uppercase tracking-[0.22em] text-foreground transition-colors hover:bg-foreground/5"
             whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
             whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
           >
             Redo
-          </motion.button>
-          <motion.button
-            type="button"
-            onClick={handleEmail}
-            className="flex-1 rounded-full bg-foreground py-3.5 text-xs uppercase tracking-[0.22em] text-background transition-colors hover:bg-foreground/90"
-            whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
-            whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
-          >
-            E-Mail Results
           </motion.button>
         </div>
       </motion.div>

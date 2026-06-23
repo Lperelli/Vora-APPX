@@ -110,16 +110,6 @@ export function ResultsScreen({ analysis, onRedo, onShowRecommendations }: Resul
   const silhouette = silhouetteForBodyType(analysis.bodyType)
   const label = analysis.bodyTypeLabel
 
-  const handleEmail = () => {
-    const subject = encodeURIComponent(`My VORA Style Profile — ${label}`)
-    const body = encodeURIComponent(
-      `My body type: ${label}\n\n${analysis.silhouetteDescription}\n\nWhat works for me:\n${analysis.whatWorksForYou
-        .map((t) => `• ${t}`)
-        .join('\n')}`
-    )
-    window.location.href = `mailto:?subject=${subject}&body=${body}`
-  }
-
   return (
     <motion.div
       className="flex min-h-[100dvh] flex-col items-stretch overflow-x-hidden bg-background px-3 pb-32 pt-0 sm:px-6 sm:pb-28"
@@ -230,24 +220,15 @@ export function ResultsScreen({ analysis, onRedo, onShowRecommendations }: Resul
         animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
       >
-        <div className={`flex gap-3 sm:gap-4 ${VORA_RESULTS_MAX}`}>
+        <div className={`flex ${VORA_RESULTS_MAX}`}>
           <motion.button
             type="button"
             onClick={onRedo}
-            className="flex-1 rounded-full border border-foreground/20 bg-transparent py-3.5 text-xs uppercase tracking-[0.22em] text-foreground transition-colors hover:bg-foreground/5"
+            className="w-full rounded-full border border-foreground/20 bg-transparent py-3.5 text-xs uppercase tracking-[0.22em] text-foreground transition-colors hover:bg-foreground/5"
             whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
             whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
           >
             Redo
-          </motion.button>
-          <motion.button
-            type="button"
-            onClick={handleEmail}
-            className="flex-1 rounded-full bg-foreground py-3.5 text-xs uppercase tracking-[0.22em] text-background transition-colors hover:bg-foreground/90"
-            whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
-            whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
-          >
-            E-Mail Results
           </motion.button>
         </div>
       </motion.div>
