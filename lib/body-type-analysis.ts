@@ -44,6 +44,8 @@ export const BodyAnalysisSchema = z.object({
     })
   ),
   confidence: z.string(),
+  /** Soft match percentage per body type (sums to ~100), for the UI breakdown. */
+  scores: z.record(z.string(), z.number()).optional(),
   /** Editorial lead-in for the style recommendations screen (Figma 327:423). */
   styleIntro: z.string(),
   /** Curated shoppable picks for the body type. */

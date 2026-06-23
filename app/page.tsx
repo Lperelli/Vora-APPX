@@ -10,9 +10,13 @@ import { MeasurementsQuizScreen } from '@/components/vora/measurements-quiz-scre
 import { ProcessingScreen } from '@/components/vora/processing-screen'
 import { ResultsScreen } from '@/components/vora/results-screen'
 import { StyleRecommendationsScreen } from '@/components/vora/style-recommendations-screen'
+import { EmailGateScreen } from '@/components/vora/email-gate-screen'
+import { PhotoFallbackScreen, type PhotoIssue } from '@/components/vora/photo-fallback-screen'
 import { VoraLogo } from '@/components/vora/vora-logo'
-import type { BodyAnalysis } from '@/app/api/analyze/route'
-import { buildAnalysisFromBodyType } from '@/lib/body-type-analysis'
+import { type BodyAnalysis, buildAnalysisFromBodyType } from '@/lib/body-type-analysis'
+import { analyzeMeasurements, buildAnalysisFromClassification, type ManualMeasurements } from '@/lib/analyze'
+import { classifyBodyType } from '@/lib/body-classifier'
+import { measureFromImage } from '@/lib/photo-flow'
 
 type Step =
   | 'welcome'    // Screen 1: photo grid + "OVERWHELMED?" modal
@@ -21,8 +25,16 @@ type Step =
   | 'measurements' // Measurements quiz (Enter Measurements)
   | 'upload'     // Screen 4: photo upload
   | 'processing' // Screen 5: analyzing animation
+  | 'photoFallback' // Photo unusable / low confidence → retry or manual
+  | 'emailGate'  // Capture email before unlocking results
   | 'results'    // Screen 6: body type results
   | 'recommendations' // Screen 7: editorial style picks (Figma 327:423)
+
+const MIN_PROCESSING_MS = 2200
+
+function now() {
+  return typeof performance !== 'undefined' ? performance.now() : Date.now()
+}
 
 export default function VoraApp() {
   const [step, setStep] = useState<Step>('welcome')
@@ -30,6 +42,8 @@ export default function VoraApp() {
   const [processingReturnStep, setProcessingReturnStep] = useState<Step>('upload')
   const [analysisResult, setAnalysisResult] = useState<BodyAnalysis | null>(null)
   const [isAnalysisComplete, setIsAnalysisComplete] = useState(false)
+  const [photoIssue, setPhotoIssue] = useState<PhotoIssue | null>(null)
+  const [emailProvided, setEmailProvided] = useState(false)
   const prefersReducedMotion = useReducedMotion()
   const [showIntro, setShowIntro] = useState(false)
 
@@ -45,7 +59,6 @@ export default function VoraApp() {
         return () => window.clearTimeout(t)
       }
     } catch {
-      // If storage is unavailable, just skip the intro.
       setShowIntro(false)
     }
   }, [prefersReducedMotion])
@@ -56,104 +69,85 @@ export default function VoraApp() {
     [introDurationMs]
   )
 
-  const handleAnalyze = useCallback(async (files: File[]) => {
-    setProcessingReturnStep('upload')
-    setStep('processing')
-    setIsAnalysisComplete(false)
-
-    const started = typeof performance !== 'undefined' ? performance.now() : Date.now()
-    const MIN_MS = 2200
-
-    const waitRemaining = async () => {
-      const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
-      const elapsed = now - started
-      if (elapsed < MIN_MS) {
-        await new Promise((r) => setTimeout(r, MIN_MS - elapsed))
-      }
-    }
-
-    try {
-      const formData = new FormData()
-      files.forEach((file, i) => {
-        formData.append(`photo_${i}`, file)
-      })
-
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        let message = `HTTP ${response.status}`
-        try {
-          const errBody = (await response.json()) as { error?: string; detail?: string }
-          if (errBody?.error) message = `${errBody.error}${errBody.detail ? ` — ${errBody.detail}` : ''}`
-          else if (errBody?.detail) message = errBody.detail
-        } catch {
-          /* ignore non-JSON error bodies */
-        }
-        console.error('[vora] /api/analyze failed:', message)
-        throw new Error(message)
-      }
-
-      const data = await response.json()
-      await waitRemaining()
-      setAnalysisResult(data.analysis)
-      setIsAnalysisComplete(true)
-    } catch (error) {
-      console.error('[vora] Analysis failed:', error instanceof Error ? error.message : error)
-      setAnalysisResult(buildAnalysisFromBodyType('rectangle', 'low'))
-      setIsAnalysisComplete(true)
+  const waitRemaining = useCallback(async (started: number) => {
+    const elapsed = now() - started
+    if (elapsed < MIN_PROCESSING_MS) {
+      await new Promise((r) => setTimeout(r, MIN_PROCESSING_MS - elapsed))
     }
   }, [])
 
+  // ── Photo flow: 100% client-side (MediaPipe), nothing uploaded ────────────
+  const handleAnalyze = useCallback(
+    async (files: File[]) => {
+      setProcessingReturnStep('upload')
+      setStep('processing')
+      setIsAnalysisComplete(false)
+      setPhotoIssue(null)
+
+      const started = now()
+      try {
+        let widths: NonNullable<Awaited<ReturnType<typeof measureFromImage>>['widths']> | null = null
+        let lastReason: PhotoIssue = 'no_body'
+
+        for (const file of files) {
+          const measured = await measureFromImage(file)
+          if (measured.ok && measured.widths) {
+            widths = measured.widths
+            break
+          }
+          if (measured.reason) lastReason = measured.reason
+        }
+
+        await waitRemaining(started)
+
+        if (!widths) {
+          setPhotoIssue(lastReason)
+          setStep('photoFallback')
+          return
+        }
+
+        const result = classifyBodyType(widths)
+        if (result.confidence === 'low') {
+          // Never present a low-confidence guess as exact (spec §5).
+          setPhotoIssue('low_confidence')
+          setStep('photoFallback')
+          return
+        }
+
+        setAnalysisResult(buildAnalysisFromClassification(result, 'photo'))
+        setIsAnalysisComplete(true)
+      } catch (error) {
+        console.error('[vora] photo analysis failed:', error instanceof Error ? error.message : error)
+        await waitRemaining(started)
+        setPhotoIssue('load_failed')
+        setStep('photoFallback')
+      }
+    },
+    [waitRemaining]
+  )
+
+  // ── Manual flow: same classifier, fully deterministic ─────────────────────
   const handleMeasurementAnalyze = useCallback(
-    async (payload: { bustCm: number; waistCm: number; hipsCm: number; heightCm?: number }) => {
+    async (payload: ManualMeasurements) => {
       setProcessingReturnStep('measurements')
       setStep('processing')
       setIsAnalysisComplete(false)
+      setPhotoIssue(null)
 
-      const started = typeof performance !== 'undefined' ? performance.now() : Date.now()
-      const MIN_MS = 2200
-      const waitRemaining = async () => {
-        const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
-        const elapsed = now - started
-        if (elapsed < MIN_MS) {
-          await new Promise((r) => setTimeout(r, MIN_MS - elapsed))
-        }
-      }
-
+      const started = now()
       try {
-        const response = await fetch('/api/analyze-measurements', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-
-        if (!response.ok) {
-          let message = `HTTP ${response.status}`
-          try {
-            const errBody = (await response.json()) as { error?: string; detail?: string }
-            if (errBody?.error) message = `${errBody.error}${errBody.detail ? ` — ${errBody.detail}` : ''}`
-            else if (errBody?.detail) message = errBody.detail
-          } catch {
-            /* ignore */
-          }
-          console.error('[vora] /api/analyze-measurements failed:', message)
-          throw new Error(message)
-        }
-
-        const data = await response.json()
-        await waitRemaining()
-        setAnalysisResult(data.analysis)
+        const analysis = analyzeMeasurements(payload)
+        await waitRemaining(started)
+        setAnalysisResult(analysis)
         setIsAnalysisComplete(true)
       } catch (error) {
-        console.error('[vora] Measurement analysis failed:', error instanceof Error ? error.message : error)
-        setAnalysisResult(buildAnalysisFromBodyType('rectangle', 'low'))
+        console.error('[vora] measurement analysis failed:', error instanceof Error ? error.message : error)
+        await waitRemaining(started)
+        setAnalysisResult({ ...buildAnalysisFromBodyType('rectangle', 'low'), analysisSource: 'measurement' })
         setIsAnalysisComplete(true)
       }
     },
-    []
+    [waitRemaining]
   )
 
   const handleRedo = useCallback(() => {
@@ -161,6 +155,7 @@ export default function VoraApp() {
     setUploadBackStep('intro')
     setAnalysisResult(null)
     setIsAnalysisComplete(false)
+    setPhotoIssue(null)
   }, [])
 
   const goToUpload = useCallback((returnStep: Step) => {
@@ -179,7 +174,6 @@ export default function VoraApp() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }}
             >
-              {/* Soft vignette + glow */}
               <div className="absolute inset-0">
                 <div className="absolute inset-0 bg-[radial-gradient(70%_55%_at_50%_35%,oklch(0.22_0_0/0.55)_0%,transparent_60%)]" />
                 <div className="absolute inset-0 bg-[radial-gradient(55%_45%_at_50%_55%,oklch(0.16_0_0/0.7)_0%,transparent_70%)]" />
@@ -195,16 +189,13 @@ export default function VoraApp() {
                   <VoraLogo priority className="h-10 w-auto sm:h-12 md:h-14" />
 
                   <div className="w-full max-w-[260px]">
-                    {/* Track */}
                     <div className="relative h-1.5 rounded-full bg-foreground/10 overflow-hidden">
-                      {/* Shimmer */}
                       <motion.div
                         className="absolute inset-0 bg-[linear-gradient(110deg,transparent_0%,oklch(0.96_0_0/0.10)_35%,transparent_70%)]"
                         initial={{ x: '-60%' }}
                         animate={{ x: '120%' }}
                         transition={{ duration: 1.15, ease: [0.16, 1, 0.3, 1] }}
                       />
-                      {/* Progress fill */}
                       <motion.div
                         className="absolute left-0 top-0 h-full rounded-full bg-foreground/30"
                         initial={{ width: '0%' }}
@@ -238,10 +229,7 @@ export default function VoraApp() {
             className="min-h-screen"
           >
             {step === 'welcome' && (
-              <WelcomeScreen
-                onStart={() => setStep('intro')}
-                onSkip={() => setStep('notNow')}
-              />
+              <WelcomeScreen onStart={() => setStep('intro')} onSkip={() => setStep('notNow')} />
             )}
 
             {step === 'notNow' && (
@@ -268,10 +256,7 @@ export default function VoraApp() {
             )}
 
             {step === 'upload' && (
-              <PhotoUploadScreen
-                onSubmit={handleAnalyze}
-                onBack={() => setStep(uploadBackStep)}
-              />
+              <PhotoUploadScreen onSubmit={handleAnalyze} onBack={() => setStep(uploadBackStep)} />
             )}
 
             {step === 'processing' && (
@@ -283,8 +268,27 @@ export default function VoraApp() {
                   setStep(processingReturnStep)
                 }}
                 onComplete={() => {
-                  if (analysisResult) setStep('results')
+                  if (analysisResult) setStep(emailProvided ? 'results' : 'emailGate')
                 }}
+              />
+            )}
+
+            {step === 'photoFallback' && photoIssue && (
+              <PhotoFallbackScreen
+                issue={photoIssue}
+                onRetryPhoto={() => setStep('upload')}
+                onEnterMeasurements={() => setStep('measurements')}
+                onBack={() => setStep('intro')}
+              />
+            )}
+
+            {step === 'emailGate' && analysisResult && (
+              <EmailGateScreen
+                onSubmit={() => {
+                  setEmailProvided(true)
+                  setStep('results')
+                }}
+                onBack={() => setStep(processingReturnStep)}
               />
             )}
 

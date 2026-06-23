@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useMemo } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import type { BodyAnalysis } from '@/app/api/analyze/route'
+import type { BodyAnalysis } from '@/lib/body-type-analysis'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
 import { VORA_RESULTS_MAX } from './vora-layout'
