@@ -23,9 +23,13 @@ function detectRuntimeBase(): string {
   try {
     const el = document.querySelector('script[src*="/_next/"], link[href*="/_next/"]')
     const ref = el?.getAttribute('src') || el?.getAttribute('href') || ''
-    const pathname = new URL(ref, window.location.origin).pathname
-    const i = pathname.indexOf('/_next/')
-    runtimeBase = i > 0 ? pathname.slice(0, i) : ''
+    const u = new URL(ref, window.location.origin)
+    const i = u.pathname.indexOf('/_next/')
+    const prefixPath = i > 0 ? u.pathname.slice(0, i) : ''
+    // Webflow Cloud serves /_next (and /public) from a separate assets origin,
+    // so when _next is cross-origin we point images at that same origin+path.
+    // Same-origin (Vercel/local) → just the path (usually "").
+    runtimeBase = u.origin !== window.location.origin ? u.origin + prefixPath : prefixPath
   } catch {
     runtimeBase = ''
   }
