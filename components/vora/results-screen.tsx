@@ -9,6 +9,7 @@ import type { BodyTypeId, BodyAnalysis } from '@/lib/body-type-analysis'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
 import { VORA_RESULTS_MAX } from './vora-layout'
+import { asset } from '@/lib/base-path'
 
 // ── Line-art silhouettes (one per BodyTypeId from API / presets) ──────────
 
@@ -362,7 +363,7 @@ function CelebrityFlipCard({
     return (
       <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
         <Image
-          src={imageSrc}
+          src={asset(imageSrc)}
           alt={name}
           fill
           className="object-cover object-top"
@@ -413,7 +414,7 @@ function CelebrityFlipCard({
           }}
         >
           <Image
-            src={imageSrc}
+            src={asset(imageSrc)}
             alt={name}
             fill
             className="object-cover object-top"

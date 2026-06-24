@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { motion, useReducedMotion } from 'framer-motion'
+import { asset } from '@/lib/base-path'
 
 interface WelcomeScreenProps {
   onStart: () => void
@@ -21,7 +22,7 @@ export function WelcomeScreen({ onStart, onSkip }: WelcomeScreenProps) {
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         >
           <Image
-            src="/brand/vora-logo@2x.png"
+            src={asset('/brand/vora-logo@2x.png')}
             alt="Vora"
             width={202}
             height={48}
@@ -42,7 +43,7 @@ export function WelcomeScreen({ onStart, onSkip }: WelcomeScreenProps) {
             transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
           >
             <Image
-              src="/home/home.png"
+              src={asset('/home/home.png')}
               alt="Vora hero grid"
               width={2120}
               height={1200}

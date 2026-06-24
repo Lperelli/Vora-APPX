@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { asset } from '@/lib/base-path'
 
 /** White @2x wordmark (preferred). Same artboard size as dark asset for swap. */
 const LOGO_WHITE_SRC = '/brand/vora-logo-white@2x.png'
@@ -29,7 +30,7 @@ export function VoraLogo({
 
   return (
     <Image
-      src={src}
+      src={asset(src)}
       alt="Vora"
       width={202}
       height={48}

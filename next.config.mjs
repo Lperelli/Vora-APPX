@@ -14,6 +14,11 @@ const basePath = process.env.WEBFLOW_CLOUD_BASE_PATH || process.env.NEXT_PUBLIC_
 const nextConfig = {
   basePath: basePath || undefined,
   assetPrefix: basePath || undefined,
+  // Expose the resolved prefix to client code so we can prepend it to
+  // next/image srcs (next/image does NOT apply basePath to local srcs).
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath,
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

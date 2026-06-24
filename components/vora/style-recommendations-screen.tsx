@@ -7,6 +7,7 @@ import type { BodyAnalysis } from '@/lib/body-type-analysis'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
 import { VORA_RESULTS_MAX } from './vora-layout'
+import { asset } from '@/lib/base-path'
 
 interface StyleRecommendationsScreenProps {
   analysis: BodyAnalysis
@@ -74,7 +75,7 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRedo }: StyleRe
           >
             <div className="relative aspect-[3/4] w-full shrink-0 overflow-hidden rounded-xl bg-black ring-1 ring-white/10 sm:h-[230px] sm:w-[160px]">
               <Image
-                src={product.image}
+                src={asset(product.image)}
                 alt={product.name}
                 fill
                 className="object-cover object-top"
