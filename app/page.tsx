@@ -2,9 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'framer-motion'
-import { WelcomeScreen } from '@/components/vora/welcome-screen'
 import { IntroScreen } from '@/components/vora/intro-screen'
-import { NotNowScreen } from '@/components/vora/not-now-screen'
 import { PhotoUploadScreen } from '@/components/vora/photo-upload-screen'
 import { MeasurementsQuizScreen } from '@/components/vora/measurements-quiz-screen'
 import { ProcessingScreen } from '@/components/vora/processing-screen'
@@ -19,9 +17,7 @@ import { classifyBodyType } from '@/lib/body-classifier'
 import { measureFromImage } from '@/lib/photo-flow'
 
 type Step =
-  | 'welcome'    // Screen 1: photo grid + "OVERWHELMED?" modal
-  | 'notNow'     // After "Not now": full-screen choice (Figma Step-01)
-  | 'intro'      // Screen 2: "WE KNOW ONLINE FITTING IS A STRUGGLE"
+  | 'intro'      // Entry screen: "WE KNOW ONLINE FITTING IS A STRUGGLE"
   | 'measurements' // Measurements quiz (Enter Measurements)
   | 'upload'     // Screen 4: photo upload
   | 'processing' // Screen 5: analyzing animation
@@ -37,7 +33,7 @@ function now() {
 }
 
 export default function VoraApp() {
-  const [step, setStep] = useState<Step>('welcome')
+  const [step, setStep] = useState<Step>('intro')
   const [uploadBackStep, setUploadBackStep] = useState<Step>('intro')
   const [processingReturnStep, setProcessingReturnStep] = useState<Step>('upload')
   const [analysisResult, setAnalysisResult] = useState<BodyAnalysis | null>(null)
@@ -45,25 +41,33 @@ export default function VoraApp() {
   const [photoIssue, setPhotoIssue] = useState<PhotoIssue | null>(null)
   const [emailProvided, setEmailProvided] = useState(false)
   const prefersReducedMotion = useReducedMotion()
-  const [showIntro, setShowIntro] = useState(false)
-
-  useEffect(() => {
-    if (prefersReducedMotion) return
-    try {
-      const key = 'vora_intro_seen_v1'
-      const alreadySeen = sessionStorage.getItem(key) === '1'
-      if (!alreadySeen) {
-        setShowIntro(true)
-        sessionStorage.setItem(key, '1')
-        const t = window.setTimeout(() => setShowIntro(false), 1350)
-        return () => window.clearTimeout(t)
-      }
-    } catch {
-      setShowIntro(false)
-    }
-  }, [prefersReducedMotion])
+  // Show the loading splash from the very first paint so it covers the page,
+  // then reveal the app — instead of flashing the page first.
+  const [showIntro, setShowIntro] = useState(true)
 
   const introDurationMs = 1350
+
+  useEffect(() => {
+    let alreadySeen = false
+    try {
+      alreadySeen = sessionStorage.getItem('vora_intro_seen_v1') === '1'
+    } catch {
+      /* storage unavailable */
+    }
+    // Repeat visits within the session, or reduced-motion users, skip the splash.
+    if (prefersReducedMotion || alreadySeen) {
+      setShowIntro(false)
+      return
+    }
+    try {
+      sessionStorage.setItem('vora_intro_seen_v1', '1')
+    } catch {
+      /* ignore */
+    }
+    const t = window.setTimeout(() => setShowIntro(false), introDurationMs)
+    return () => window.clearTimeout(t)
+  }, [prefersReducedMotion])
+
   const introProgressTransition = useMemo(
     () => ({ duration: introDurationMs / 1000, ease: [0.16, 1, 0.3, 1] as const }),
     [introDurationMs]
@@ -151,7 +155,7 @@ export default function VoraApp() {
   )
 
   const handleRedo = useCallback(() => {
-    setStep('welcome')
+    setStep('intro')
     setUploadBackStep('intro')
     setAnalysisResult(null)
     setIsAnalysisComplete(false)
@@ -228,21 +232,11 @@ export default function VoraApp() {
             transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
             className="min-h-screen"
           >
-            {step === 'welcome' && (
-              <WelcomeScreen onStart={() => setStep('intro')} onSkip={() => setStep('notNow')} />
-            )}
-
-            {step === 'notNow' && (
-              <NotNowScreen
-                onBack={() => setStep('welcome')}
-                onUploadPhotos={() => goToUpload('notNow')}
-                onFillQuiz={() => setStep('intro')}
-              />
-            )}
-
             {step === 'intro' && (
               <IntroScreen
-                onBack={() => setStep('welcome')}
+                onBack={() => {
+                  if (typeof window !== 'undefined') window.history.back()
+                }}
                 onUploadPhotos={() => goToUpload('intro')}
                 onEnterMeasurements={() => setStep('measurements')}
               />
