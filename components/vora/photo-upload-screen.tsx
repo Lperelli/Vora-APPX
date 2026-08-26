@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
 import { PhotoUploadFlip, type PhotoSlotsState } from './photo-upload-flip'
+import { PhotoGuidanceList } from './photo-guidance'
 import { VORA_FLOW_MAX } from './vora-layout'
 
 interface PhotoUploadScreenProps {
@@ -18,7 +19,9 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
   const slotsRef = useRef(slots)
   slotsRef.current = slots
 
-  const hasPhotos = slots.some((s) => s !== null)
+  const photoCount = slots.filter((s) => s !== null).length
+  const hasPhotos = photoCount > 0
+  const hasMinimumPhotos = photoCount >= 2
 
   useEffect(() => {
     return () => {
@@ -30,7 +33,7 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
 
   const handleSubmit = () => {
     const files = slots.filter((s): s is NonNullable<typeof s> => s !== null).map((s) => s.file)
-    if (files.length === 0) return
+    if (files.length < 2) return
     onSubmit(files)
   }
 
@@ -70,32 +73,28 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
             animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
             transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: prefersReducedMotion ? 0 : 0.12 }}
           >
-            <div className="mx-auto max-w-2xl space-y-4 sm:space-y-5">
+            <div className="mx-auto max-w-xl space-y-5 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5 text-left sm:p-6">
               <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Final Review</p>
-              <p className="text-sm sm:text-base leading-relaxed text-foreground/70">
-                Now upload up to 3 pictures of your full body. Pictures where you are wearing tighter clothes will work
-                the best for us. Avoid pictures where you have loose clothes.
-              </p>
-              <p className="mt-4 text-sm sm:text-base leading-relaxed text-foreground/50">
-                If <em className="font-semibold italic text-foreground/65">not</em>, you can take a full body picture
-                right now!
-              </p>
-              <p className="text-sm sm:text-base leading-relaxed text-foreground/50">
-                Find good illumination and stand with confidence ;)
+              <PhotoGuidanceList />
+              <p className="border-t border-white/[0.08] pt-4 text-[11px] leading-relaxed text-foreground/50">
+                {hasMinimumPhotos
+                  ? `${photoCount} photos ready. You can add one more or continue.`
+                  : 'Add one more full-length photo to continue.'}
               </p>
             </div>
           </motion.div>
 
           <motion.button
             onClick={handleSubmit}
-            className="mx-auto min-h-[48px] w-full max-w-md rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-4 py-4 text-[11px] uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-[oklch(0.20_0_0)] sm:px-6 sm:text-xs sm:tracking-[0.25em]"
+            disabled={!hasMinimumPhotos}
+            className="mx-auto min-h-[48px] w-full max-w-md rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-4 py-4 text-[11px] uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-[oklch(0.20_0_0)] disabled:cursor-not-allowed disabled:opacity-35 sm:px-6 sm:text-xs sm:tracking-[0.25em]"
             initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
             animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: prefersReducedMotion ? 0 : 0.18 }}
             whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
             whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
           >
-            Submit!
+            Next
           </motion.button>
         </>
       )}

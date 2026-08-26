@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Camera, Loader2, Upload, X } from 'lucide-react'
+import { PhotoGuidanceList } from './photo-guidance'
 import { VORA_UPLOAD_PANEL_MAX } from './vora-layout'
 
 export type FlipPhotoSlot = {
@@ -19,13 +20,13 @@ const FLIP_MS = 600
 /** Time between each card starting its flip (previous card finishes). */
 const FLIP_STAGGER_MS = FLIP_MS
 
-/** Tries rear → front → generic video so phones & laptops both get a working stream when possible. */
+/** Tries front → rear → generic video so self-capture works naturally on phones and laptops. */
 async function requestVideoStream(): Promise<MediaStream> {
   const attempts: MediaStreamConstraints[] = [
-    { video: { facingMode: { ideal: 'environment' } }, audio: false },
-    { video: { facingMode: 'environment' }, audio: false },
     { video: { facingMode: { ideal: 'user' } }, audio: false },
     { video: { facingMode: 'user' }, audio: false },
+    { video: { facingMode: { ideal: 'environment' } }, audio: false },
+    { video: { facingMode: 'environment' }, audio: false },
     { video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
     { video: true, audio: false },
   ]
@@ -59,6 +60,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
   const videoRef = useRef<HTMLVideoElement>(null)
   const scheduleIdRef = useRef(0)
   const [mounted, setMounted] = useState(false)
+  const [guidanceOpen, setGuidanceOpen] = useState(true)
   const [cameraPhase, setCameraPhase] = useState<CameraModalPhase>('idle')
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
 
@@ -268,20 +270,31 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
       document.body
     )
 
+  const guidancePortal =
+    mounted &&
+    guidanceOpen &&
+    typeof document !== 'undefined' &&
+    createPortal(
+      <PhotoGuidanceModal
+        onClose={() => setGuidanceOpen(false)}
+        onUpload={() => {
+          setGuidanceOpen(false)
+          openGallery()
+        }}
+      />,
+      document.body
+    )
+
   const copyBlock = (
     <>
       <p className="mt-5 text-center text-[10px] font-medium tracking-[0.3em] text-white sm:mt-6 sm:text-[11px]">
-        FULL BODY GLAM
+        2–3 FULL-LENGTH PHOTOS
       </p>
       <div className="mt-3 space-y-3 px-0.5 text-center text-[13px] leading-relaxed text-white/58 sm:text-sm sm:leading-relaxed">
         <p>
-          Now upload up to 3 pictures of your full body. Pictures where you are wearing tighter clothes will work the
-          best for us. Avoid pictures where you have loose clothes.
+          Add at least 2 clear photos so we can understand your natural proportions. Tap any empty frame or use the
+          options below.
         </p>
-        <p>
-          If <em className="font-semibold italic text-white/85">not</em>, you can take a full body picture right now!
-        </p>
-        <p className="text-white/45">Find good illumination and stand with confidence ;)</p>
       </div>
       <div className="mt-6 flex flex-col items-center gap-2 pb-1 pt-2 sm:mt-8 sm:gap-2.5">
         <button
@@ -332,20 +345,24 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
                     </button>
                   </div>
                 ) : (
-                  <div
+                  <button
+                    type="button"
                     key={`rm-${i}`}
-                    className="flex aspect-[3/4] min-w-0 items-center justify-center rounded-2xl border border-dashed border-white/32"
+                    onClick={openGallery}
+                    className="group flex aspect-[3/4] min-w-0 items-center justify-center rounded-2xl border border-dashed border-white/32 transition hover:border-white/60 hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
+                    aria-label={`Upload photo ${i + 1}`}
                   >
-                    <span className="px-1 text-center text-[8px] font-medium tracking-[0.18em] text-white/60 sm:text-[9px]">
+                    <span className="px-1 text-center text-[8px] font-medium tracking-[0.18em] text-white/60 transition group-hover:text-white/85 sm:text-[9px]">
                       BODY {i + 1}
                     </span>
-                  </div>
+                  </button>
                 )
               )}
             </div>
             {copyBlock}
           </div>
         </div>
+        {guidancePortal}
         {cameraPortal}
       </>
     )
@@ -371,6 +388,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
                 bodyIndex={i + 1}
                 slot={slot}
                 flipMs={FLIP_MS}
+                onAdd={openGallery}
                 onRemove={() => removeAt(i)}
               />
             ))}
@@ -378,8 +396,70 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
           {copyBlock}
         </motion.div>
       </div>
+      {guidancePortal}
       {cameraPortal}
     </>
+  )
+}
+
+function PhotoGuidanceModal({ onClose, onUpload }: { onClose: () => void; onUpload: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-[320] flex items-center justify-center bg-black/82 p-4 backdrop-blur-md"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="photo-guidance-title"
+    >
+      <button type="button" className="absolute inset-0 cursor-default" aria-label="Close instructions" onClick={onClose} />
+      <motion.div
+        className="relative z-[1] w-full max-w-[430px] overflow-hidden rounded-[26px] bg-[oklch(0.965_0.006_75)] px-6 py-7 text-black shadow-[0_30px_100px_-28px_rgba(0,0,0,0.95)] sm:px-9 sm:py-9"
+        initial={{ opacity: 0, y: 18, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-black/[0.06] text-black/65 transition hover:bg-black/[0.1] hover:text-black"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="pr-8">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-black/42">Photo guide</p>
+          <h2 id="photo-guidance-title" className="mt-3 font-serif text-[31px] leading-[1.05] tracking-[-0.025em] sm:text-[36px]">
+            Full-length photos
+          </h2>
+          <p className="mt-4 max-w-[330px] text-[13px] leading-[1.6] text-black/62 sm:text-[14px]">
+            We need at least 2 full-length photos to understand your proportions.
+          </p>
+        </div>
+
+        <div className="my-6 h-px bg-black/10" />
+        <PhotoGuidanceList tone="light" />
+
+        <p className="mt-6 text-[12px] leading-[1.55] text-black/56">
+          You don&apos;t need to look a certain way. We just need to clearly see your natural proportions.
+        </p>
+
+        <button
+          type="button"
+          onClick={onUpload}
+          className="mt-7 flex min-h-[50px] w-full items-center justify-center rounded-full bg-black px-6 text-[11px] font-medium uppercase tracking-[0.24em] text-white transition hover:bg-black/85 active:scale-[0.99]"
+        >
+          Upload
+        </button>
+      </motion.div>
+    </div>
   )
 }
 
@@ -458,9 +538,10 @@ function CameraCaptureModal({
                 autoPlay
                 onLoadedData={() => setVideoReady(true)}
               />
+              <BodyFramingGuide />
             </div>
             <p className="text-center text-[11px] leading-relaxed text-white/45">
-              Frame your full body, then capture. Works on desktop webcams and phone cameras (use HTTPS).
+              Step back and align your head, shoulders, waist, hips and feet with the guide before capturing.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button
@@ -518,15 +599,51 @@ function CameraCaptureModal({
   )
 }
 
+function BodyFramingGuide() {
+  const guides = [
+    { label: 'SHOULDERS', y: 118 },
+    { label: 'WAIST', y: 245 },
+    { label: 'HIPS', y: 350 },
+    { label: 'FEET', y: 488 },
+  ] as const
+
+  return (
+    <svg
+      viewBox="0 0 320 520"
+      preserveAspectRatio="none"
+      className="pointer-events-none absolute inset-0 h-full w-full text-white"
+      aria-hidden
+    >
+      <rect x="1" y="1" width="318" height="518" rx="18" fill="none" stroke="currentColor" strokeOpacity="0.14" />
+      <circle cx="160" cy="58" r="31" fill="none" stroke="currentColor" strokeOpacity="0.72" strokeWidth="1.5" strokeDasharray="5 6" />
+      <line x1="160" y1="89" x2="160" y2="488" stroke="currentColor" strokeOpacity="0.55" strokeWidth="1.25" strokeDasharray="6 7" />
+      <text x="160" y="18" textAnchor="middle" fill="currentColor" fillOpacity="0.78" fontSize="8" letterSpacing="1.6">
+        HEAD
+      </text>
+      {guides.map(({ label, y }) => (
+        <g key={label}>
+          <line x1="40" y1={y} x2="280" y2={y} stroke="currentColor" strokeOpacity="0.62" strokeWidth="1.1" strokeDasharray="5 6" />
+          <line x1="155" y1={y} x2="165" y2={y} stroke="currentColor" strokeOpacity="0.9" strokeWidth="1.2" />
+          <text x="12" y={y + 3} fill="currentColor" fillOpacity="0.78" fontSize="7" letterSpacing="1.1">
+            {label}
+          </text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+
 function SlotFlipCard({
   bodyIndex,
   slot,
   flipMs,
+  onAdd,
   onRemove,
 }: {
   bodyIndex: number
   slot: PhotoSlot
   flipMs: number
+  onAdd: () => void
   onRemove: () => void
 }) {
   const flipped = slot !== null
@@ -541,18 +658,21 @@ function SlotFlipCard({
         }}
       >
         {/* FRONT */}
-        <div
-          className="absolute inset-0 flex items-center justify-center rounded-2xl border border-dashed border-white/34 bg-[oklch(0.11_0_0)]"
+        <button
+          type="button"
+          onClick={onAdd}
+          className="group absolute inset-0 flex items-center justify-center rounded-2xl border border-dashed border-white/34 bg-[oklch(0.11_0_0)] transition hover:border-white/60 hover:bg-[oklch(0.14_0_0)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
           style={{
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
             transform: 'rotateY(0deg)',
           }}
+          aria-label={`Upload photo ${bodyIndex}`}
         >
-          <span className="px-1 text-center text-[8px] font-medium tracking-[0.2em] text-white/65 sm:text-[9px]">
+          <span className="px-1 text-center text-[8px] font-medium tracking-[0.2em] text-white/65 transition group-hover:text-white/90 sm:text-[9px]">
             BODY {bodyIndex}
           </span>
-        </div>
+        </button>
 
         {/* BACK */}
         <div

@@ -5,46 +5,51 @@ import { motion } from 'framer-motion'
 export type MeasurementFocusField = 'bust' | 'waist' | 'hips' | null
 
 interface MeasurementBodyWireframeProps {
-  // Kept for API compatibility; the silhouette is static like the Figma design.
   bust: number
   waist: number
   hips: number
   focusField: MeasurementFocusField
 }
 
-// ── Static hourglass geometry (Figma Quiz_01 — Vector 1 + center axis) ──────
+// ── Responsive body geometry (updates as measurements are entered) ─────────
 const CX = 70
-const Y_TOP = 72
+const Y_TOP = 82
 const Y_WAIST = 182
-const Y_BOTTOM = 292
-const TOP_HW = 44
-const WAIST_HW = 7
-const BOTTOM_HW = 46
+const Y_BOTTOM = 282
 const AXIS_TOP = 26
 const AXIS_BOTTOM = 338
 
-// Top trapezoid + bottom trapezoid meeting at a narrow waist = clean hourglass.
-const HOURGLASS = [
-  `M ${CX - TOP_HW} ${Y_TOP}`,
-  `L ${CX + TOP_HW} ${Y_TOP}`,
-  `L ${CX + WAIST_HW} ${Y_WAIST}`,
-  `L ${CX + BOTTOM_HW} ${Y_BOTTOM}`,
-  `L ${CX - BOTTOM_HW} ${Y_BOTTOM}`,
-  `L ${CX - WAIST_HW} ${Y_WAIST}`,
-  'Z',
-].join(' ')
-
-const INDICATORS: Record<'bust' | 'waist' | 'hips', { y: number; hw: number }> = {
-  bust: { y: Y_TOP, hw: TOP_HW },
-  waist: { y: Y_WAIST, hw: WAIST_HW },
-  hips: { y: Y_BOTTOM, hw: BOTTOM_HW },
+function halfWidth(value: number, maxValue: number, fallback: number) {
+  if (!(value > 0)) return fallback
+  const normalized = value / Math.max(maxValue, value)
+  return Math.max(12, Math.min(50, 6 + normalized * 44))
 }
 
 const lineEase = [0.16, 1, 0.3, 1] as const
 
-export function MeasurementBodyWireframe({ focusField }: MeasurementBodyWireframeProps) {
+export function MeasurementBodyWireframe({ bust, waist, hips, focusField }: MeasurementBodyWireframeProps) {
   const dim = { opacity: 0.25, strokeWidth: 1 }
   const lit = { opacity: 1, strokeWidth: 1.85 }
+  const maxValue = Math.max(bust || 0, waist || 0, hips || 0, 1)
+  const bustHw = halfWidth(bust, maxValue, 42)
+  const waistHw = halfWidth(waist, maxValue, 24)
+  const hipsHw = halfWidth(hips, maxValue, 45)
+
+  const bodyPath = [
+    `M ${CX - bustHw} ${Y_TOP}`,
+    `C ${CX - bustHw} ${Y_TOP + 32}, ${CX - waistHw} ${Y_WAIST - 34}, ${CX - waistHw} ${Y_WAIST}`,
+    `C ${CX - waistHw} ${Y_WAIST + 34}, ${CX - hipsHw} ${Y_BOTTOM - 32}, ${CX - hipsHw} ${Y_BOTTOM}`,
+    `L ${CX + hipsHw} ${Y_BOTTOM}`,
+    `C ${CX + hipsHw} ${Y_BOTTOM - 32}, ${CX + waistHw} ${Y_WAIST + 34}, ${CX + waistHw} ${Y_WAIST}`,
+    `C ${CX + waistHw} ${Y_WAIST - 34}, ${CX + bustHw} ${Y_TOP + 32}, ${CX + bustHw} ${Y_TOP}`,
+    'Z',
+  ].join(' ')
+
+  const indicators: Record<'bust' | 'waist' | 'hips', { y: number; hw: number }> = {
+    bust: { y: Y_TOP, hw: bustHw },
+    waist: { y: Y_WAIST, hw: waistHw },
+    hips: { y: Y_BOTTOM, hw: hipsHw },
+  }
 
   return (
     <motion.svg
@@ -64,9 +69,11 @@ export function MeasurementBodyWireframe({ focusField }: MeasurementBodyWirefram
         opacity={0.25}
       />
 
-      {/* Hourglass outline */}
-      <path
-        d={HOURGLASS}
+      {/* The outline morphs to reflect the entered bust, waist and hip ratios. */}
+      <motion.path
+        initial={false}
+        animate={{ d: bodyPath }}
+        transition={{ duration: 0.55, ease: lineEase }}
         fill="none"
         stroke="currentColor"
         strokeLinejoin="round"
@@ -77,19 +84,17 @@ export function MeasurementBodyWireframe({ focusField }: MeasurementBodyWirefram
 
       {/* Measurement indicator lines — the focused one lights up (Figma Line 6/7) */}
       {(['bust', 'waist', 'hips'] as const).map((field) => {
-        const { y, hw } = INDICATORS[field]
+        const { y, hw } = indicators[field]
         const active = focusField === field
         return (
           <g key={field}>
             <motion.line
-              x1={CX - hw}
+              initial={false}
+              animate={{ x1: CX - hw, x2: CX + hw, ...(active ? lit : dim) }}
               y1={y}
-              x2={CX + hw}
               y2={y}
               stroke="currentColor"
               strokeLinecap="round"
-              initial={false}
-              animate={active ? lit : dim}
               transition={{ duration: 0.35, ease: lineEase }}
             />
             {active && (

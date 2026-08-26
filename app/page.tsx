@@ -90,24 +90,35 @@ export default function VoraApp() {
 
       const started = now()
       try {
-        let widths: NonNullable<Awaited<ReturnType<typeof measureFromImage>>['widths']> | null = null
+        const validWidths: NonNullable<Awaited<ReturnType<typeof measureFromImage>>['widths']>[] = []
         let lastReason: PhotoIssue = 'no_body'
 
         for (const file of files) {
           const measured = await measureFromImage(file)
           if (measured.ok && measured.widths) {
-            widths = measured.widths
-            break
+            validWidths.push(measured.widths)
+            continue
           }
           if (measured.reason) lastReason = measured.reason
         }
 
         await waitRemaining(started)
 
-        if (!widths) {
+        if (validWidths.length === 0) {
           setPhotoIssue(lastReason)
           setStep('photoFallback')
           return
+        }
+
+        // Normalize each photo before averaging so camera distance cannot make
+        // one image dominate the result. All usable uploads contribute.
+        const widths = {
+          shoulderW:
+            validWidths.reduce((sum, item) => sum + item.shoulderW / item.hipW, 0) / validWidths.length,
+          waistW: validWidths.reduce((sum, item) => sum + item.waistW / item.hipW, 0) / validWidths.length,
+          hipW: 1,
+          visibility:
+            validWidths.reduce((sum, item) => sum + (item.visibility ?? 1), 0) / validWidths.length,
         }
 
         const result = classifyBodyType(widths)

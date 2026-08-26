@@ -95,6 +95,9 @@ const FALLBACK_CELEB_IMAGES = [
   '/celebrities/celebrity-4.jpg',
 ]
 
+// Deferred for the MVP until VORA confirms image-usage rights.
+const SHOW_CELEBRITIES_IN_MVP = false
+
 interface ResultsScreenProps {
   analysis: BodyAnalysis
   onRedo: () => void
@@ -192,11 +195,13 @@ export function ResultsScreen({ analysis, onRedo, onShowRecommendations }: Resul
         </motion.section>
 
         {/* ③ Celebrity references (per-card 3D flip) */}
-        <CelebrityReferences
-          bodyTypeLabel={label}
-          celebrities={analysis.celebrities ?? []}
-          prefersReducedMotion={!!prefersReducedMotion}
-        />
+        {SHOW_CELEBRITIES_IN_MVP && (
+          <CelebrityReferences
+            bodyTypeLabel={label}
+            celebrities={analysis.celebrities ?? []}
+            prefersReducedMotion={!!prefersReducedMotion}
+          />
+        )}
 
         {/* ④ Unveil CTA */}
         <motion.button

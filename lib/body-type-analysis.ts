@@ -300,9 +300,9 @@ export const STYLE_EDITORIAL: Record<BodyTypeId, { intro: string; products: Styl
     intro:
       'Your superpower is balance — so the goal is to honor the waist, never bury it. These are the pieces that follow your curves instead of fighting them, from waist-defining knits to high-rise denim that lets your proportions do the talking.',
     products: [
-      { brand: 'BP.', name: 'Wrap-Front Rib Knit Top', price: '$38', image: '/portraits/woman-1.jpg', stylingNote: "I'd tuck this into high-rise trousers and add a thin belt." },
-      { brand: 'Madewell', name: 'High-Rise Straight Jean', price: '$98', image: '/portraits/woman-2.jpg', stylingNote: 'A clean high rise keeps the waist as the focal point.' },
-      { brand: 'Reformation', name: 'Fit-and-Flare Midi Dress', price: '$128', image: '/portraits/woman-3.jpg', stylingNote: 'Nips at the waist, glides over the hips — pure hourglass.' },
+      { brand: 'Zara', name: 'Z1975 High-Rise Straight Jeans', price: 'View current price', image: '/portraits/woman-1.jpg', stylingNote: 'A clean high rise keeps the waist as the focal point.', shopUrl: 'https://www.zara.com/us/en/z1975-hi-rise-straight-jeans-p01934041.html' },
+      { brand: 'Abercrombie & Fitch', name: 'Wide-Leg Trousers', price: 'View current price', image: '/portraits/woman-2.jpg', stylingNote: 'A structured waist and wider leg preserve your natural balance.', shopUrl: 'https://www.abercrombie.com/shop/us/womens-bottoms-wide-leg-pants-pants' },
+      { brand: 'H&M', name: 'Wrap Dress', price: 'View current price', image: '/portraits/woman-3.jpg', stylingNote: 'The wrap construction follows the waist without hiding it.', shopUrl: 'https://www2.hm.com/en_us/productpage.1285149003.html' },
       { brand: 'Everlane', name: 'Belted Trench Coat', price: '$168', image: '/portraits/woman-4.jpg', stylingNote: 'Cinch the belt and let the rest fall open.' },
       { brand: 'Mango', name: 'Medium-Width Leather Belt', price: '$30', image: '/portraits/woman-5.jpg', stylingNote: 'My go-to for redefining the waist over knits.' },
     ],
@@ -311,10 +311,10 @@ export const STYLE_EDITORIAL: Record<BodyTypeId, { intro: string; products: Styl
     intro:
       "Straight, clean lines are a blank canvas — you get to build curve wherever you want it. These picks add shape through cut, volume and belting, so you can create a waist on demand and play with proportion all season.",
     products: [
-      { brand: 'BP.', name: 'Crewneck Rib Tank', price: '$20', image: '/portraits/woman-2.jpg', stylingNote: "I'd style this with a plain white tank and sandals." },
-      { brand: 'Levi’s', name: 'Wide-Leg Pleated Trouser', price: '$89', image: '/portraits/woman-3.jpg', stylingNote: 'Pleats add gentle hip volume and a waist break.' },
-      { brand: 'Sézane', name: 'Peplum-Hem Blouse', price: '$110', image: '/portraits/woman-4.jpg', stylingNote: 'The peplum fakes a waist beautifully.' },
-      { brand: 'Aritzia', name: 'Cropped Belted Jacket', price: '$148', image: '/portraits/woman-5.jpg', stylingNote: 'Breaks the vertical line right at the waist.' },
+      { brand: 'H&M', name: 'Relaxed Button-Down Shirt', price: 'View current price', image: '/portraits/woman-2.jpg', stylingNote: 'The relaxed line adds dimension while the buttons lead the eye vertically.', shopUrl: 'https://www2.hm.com/en_us/productpage.1344514001.html' },
+      { brand: 'Zara', name: 'Striped Pleated Balloon Pants', price: 'View current price', image: '/portraits/woman-3.jpg', stylingNote: 'Pleats add gentle hip volume and a clear waist break.', shopUrl: 'https://www.zara.com/us/en/striped-pleated-balloon-pants-p01255527.html' },
+      { brand: 'Zara', name: 'Z1975 High-Rise Straight Jeans', price: 'View current price', image: '/portraits/woman-4.jpg', stylingNote: 'A straight leg creates a clean, elongating base.', shopUrl: 'https://www.zara.com/us/en/z1975-hi-rise-straight-jeans-p01934041.html' },
+      { brand: 'Zara Pre-Owned', name: 'Belted Blazer', price: 'View current price', image: '/portraits/woman-5.jpg', stylingNote: 'The belt adds instant structure and creates waist definition.', shopUrl: 'https://www.zara.com/us/en/preowned-resell/product-detail/1713554' },
       { brand: '& Other Stories', name: 'Statement Waist Belt', price: '$45', image: '/portraits/woman-6.jpg', stylingNote: 'Cinch it over anything boxy to carve a shape.' },
     ],
   },
