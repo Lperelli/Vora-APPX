@@ -11,13 +11,15 @@ import { asset } from '@/lib/base-path'
  * the shared `classifyBodyType`. The image bitmap is discarded immediately and
  * never leaves the device.
  *
- * Versions are pinned (no `latest`) per spec. The model `.task` is loaded from
- * Google's versioned model bucket; the WASM runtime from the pinned npm build.
+ * Versions are pinned (no `latest`) per spec. The model `.task` is shipped
+ * with VORA; the WASM runtime is loaded from the same pinned package version.
  */
 
-// Runtime + model are shipped with the app so camera analysis still works when
-// a CDN is slow or blocked. Keep these files in sync with package.json.
-export const POSE_WASM_BASE = '/models/mediapipe'
+// Webflow Cloud treats public `.wasm` files as Worker modules and rejects the
+// deployment when all MediaPipe variants are bundled. Keep only the 9 MB model
+// local and fetch the version-pinned runtime from jsDelivr. This URL must stay
+// in sync with the exact @mediapipe/tasks-vision version in package.json.
+export const POSE_WASM_BASE = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm'
 export const POSE_MODEL_PATH = '/models/pose_landmarker_full.task'
 
 // BlazePose landmark indices.
