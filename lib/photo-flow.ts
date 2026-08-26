@@ -1,5 +1,6 @@
 import type { BodyWidths } from '@/lib/body-classifier'
 import { THRESHOLDS } from '@/lib/body-type-config'
+import { asset } from '@/lib/base-path'
 
 /**
  * VORA — Photo flow (100% client-side, no upload).
@@ -14,11 +15,10 @@ import { THRESHOLDS } from '@/lib/body-type-config'
  * Google's versioned model bucket; the WASM runtime from the pinned npm build.
  */
 
-// Pinned versions — keep in sync with package.json "@mediapipe/tasks-vision".
-const TASKS_VISION_VERSION = '0.10.35'
-const WASM_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VISION_VERSION}/wasm`
-const MODEL_URL =
-  'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task'
+// Runtime + model are shipped with the app so camera analysis still works when
+// a CDN is slow or blocked. Keep these files in sync with package.json.
+export const POSE_WASM_BASE = '/models/mediapipe'
+export const POSE_MODEL_PATH = '/models/pose_landmarker_full.task'
 
 // BlazePose landmark indices.
 const L_SHOULDER = 11
@@ -47,9 +47,9 @@ async function getLandmarker() {
   if (!landmarkerPromise) {
     landmarkerPromise = (async () => {
       const { FilesetResolver, PoseLandmarker } = await import('@mediapipe/tasks-vision')
-      const fileset = await FilesetResolver.forVisionTasks(WASM_BASE)
+      const fileset = await FilesetResolver.forVisionTasks(asset(POSE_WASM_BASE))
       const makeOptions = (delegate: 'GPU' | 'CPU') => ({
-        baseOptions: { modelAssetPath: MODEL_URL, delegate },
+        baseOptions: { modelAssetPath: asset(POSE_MODEL_PATH), delegate },
         runningMode: 'IMAGE' as const,
         numPoses: 1,
         outputSegmentationMasks: true,

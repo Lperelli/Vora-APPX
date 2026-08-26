@@ -5,8 +5,8 @@ import { useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { asset } from '@/lib/base-path'
 
-/** White @2x wordmark (preferred). Same artboard size as dark asset for swap. */
-const LOGO_WHITE_SRC = '/brand/vora-logo-white@2x.png'
+/** White wordmark used throughout the dark app flow. */
+const LOGO_WHITE_SRC = '/logo white.svg'
 /** Dark @2x — used on welcome; as fallback when white asset is missing (invert for dark UI). */
 const LOGO_DARK_SRC = '/brand/vora-logo@2x.png'
 

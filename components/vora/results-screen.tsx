@@ -95,6 +95,10 @@ const FALLBACK_CELEB_IMAGES = [
   '/celebrities/celebrity-4.jpg',
 ]
 
+// Images are locally optimized derivatives from openly licensed Commons files.
+// Final editorial/personality-rights approval still belongs to VORA.
+const SHOW_CELEBRITIES_IN_MVP = true
+
 interface ResultsScreenProps {
   analysis: BodyAnalysis
   onRedo: () => void
@@ -192,11 +196,13 @@ export function ResultsScreen({ analysis, onRedo, onShowRecommendations }: Resul
         </motion.section>
 
         {/* ③ Celebrity references (per-card 3D flip) */}
-        <CelebrityReferences
-          bodyTypeLabel={label}
-          celebrities={analysis.celebrities ?? []}
-          prefersReducedMotion={!!prefersReducedMotion}
-        />
+        {SHOW_CELEBRITIES_IN_MVP && (
+          <CelebrityReferences
+            bodyTypeLabel={label}
+            celebrities={analysis.celebrities ?? []}
+            prefersReducedMotion={!!prefersReducedMotion}
+          />
+        )}
 
         {/* ④ Unveil CTA */}
         <motion.button
@@ -341,6 +347,18 @@ function CelebrityReferences({
             prefersReducedMotion={prefersReducedMotion}
           />
         ))}
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[8px] uppercase tracking-[0.16em] text-foreground/35">
+        <span>Editorial references only</span>
+        <span aria-hidden>·</span>
+        <a
+          href={asset('/celebrities/credits.html')}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline decoration-white/20 underline-offset-4 transition hover:text-foreground/60"
+        >
+          Image credits
+        </a>
       </div>
     </motion.section>
   )

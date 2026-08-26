@@ -12,5 +12,8 @@ export const VORA_UPLOAD_PANEL_MAX =
 /** Results screen column width (Figma Frame 98). */
 export const VORA_RESULTS_MAX = 'w-full max-w-[545px] mx-auto'
 
+/** Wider editorial grid used for large, square shoppable product imagery. */
+export const VORA_RECOMMENDATIONS_MAX = 'w-full max-w-[920px] mx-auto'
+
 /** Measurements quiz: form column (Figma Frame 49, 348px). */
 export const VORA_MEASUREMENTS_FORM_MAX = 'w-full max-w-[348px]'
