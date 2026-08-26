@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Camera, Loader2, Upload, X } from 'lucide-react'
+import { Camera, Images, Loader2, SwitchCamera, X } from 'lucide-react'
 import { PhotoGuidanceList } from './photo-guidance'
 import { VORA_UPLOAD_PANEL_MAX } from './vora-layout'
 import {
@@ -26,24 +26,94 @@ const FLIP_MS = 600
 /** Time between each card starting its flip (previous card finishes). */
 const FLIP_STAGGER_MS = FLIP_MS
 
-/** Tries front → rear → generic video so self-capture works naturally on phones and laptops. */
-async function requestVideoStream(): Promise<MediaStream> {
-  const attempts: MediaStreamConstraints[] = [
-    { video: { facingMode: { ideal: 'user' } }, audio: false },
-    { video: { facingMode: 'user' }, audio: false },
-    { video: { facingMode: { ideal: 'environment' } }, audio: false },
-    { video: { facingMode: 'environment' }, audio: false },
-    { video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
-    { video: true, audio: false },
-  ]
+type CameraFacingMode = 'user' | 'environment'
+
+type RequestedVideoStream = {
+  stream: MediaStream
+  facingMode: CameraFacingMode
+}
+
+function inferredFacingMode(stream: MediaStream, fallback: CameraFacingMode): CameraFacingMode {
+  const track = stream.getVideoTracks()[0]
+  const setting = track?.getSettings().facingMode
+  if (setting === 'user' || setting === 'environment') return setting
+
+  const label = track?.label.toLowerCase() || ''
+  if (/back|rear|environment|trasera/.test(label)) return 'environment'
+  if (/front|user|facetime|frontal/.test(label)) return 'user'
+  return fallback
+}
+
+/**
+ * Requests the selected lens explicitly. Stopping the current stream before
+ * this call is important on iOS: Safari often keeps the front lens otherwise.
+ */
+async function requestVideoStream(facingMode: CameraFacingMode): Promise<RequestedVideoStream> {
+  const size = { width: { ideal: 1920 }, height: { ideal: 1080 } }
   let lastError: unknown
-  for (const constraints of attempts) {
-    try {
-      return await navigator.mediaDevices.getUserMedia(constraints)
-    } catch (e) {
-      lastError = e
-    }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { ...size, facingMode: { exact: facingMode } },
+      audio: false,
+    })
+    const actualFacing = inferredFacingMode(stream, facingMode)
+    if (actualFacing === facingMode) return { stream, facingMode: actualFacing }
+    stream.getTracks().forEach((track) => track.stop())
+  } catch (error) {
+    lastError = error
   }
+
+  let provisionalStream: MediaStream | null = null
+  try {
+    provisionalStream = await navigator.mediaDevices.getUserMedia({
+      video: { ...size, facingMode: { ideal: facingMode } },
+      audio: false,
+    })
+    const actualFacing = inferredFacingMode(provisionalStream, facingMode)
+    if (actualFacing === facingMode) return { stream: provisionalStream, facingMode: actualFacing }
+
+    if (!navigator.mediaDevices.enumerateDevices) {
+      return { stream: provisionalStream, facingMode: actualFacing }
+    }
+
+    // Some iOS versions ignore `ideal`. Once permission exists, labels and
+    // device ids are available, so select the requested physical lens.
+    let devices: MediaDeviceInfo[]
+    try {
+      devices = await navigator.mediaDevices.enumerateDevices()
+    } catch {
+      return { stream: provisionalStream, facingMode: actualFacing }
+    }
+    const cameras = devices.filter((device) => device.kind === 'videoinput')
+    const matcher = facingMode === 'environment'
+      ? /back|rear|environment|trasera/
+      : /front|user|facetime|frontal/
+    const target = cameras.find((device) => matcher.test(device.label.toLowerCase()))
+
+    if (target && target.deviceId !== provisionalStream.getVideoTracks()[0]?.getSettings().deviceId) {
+      provisionalStream.getTracks().forEach((track) => track.stop())
+      provisionalStream = null
+      const selected = await navigator.mediaDevices.getUserMedia({
+        video: { ...size, deviceId: { exact: target.deviceId } },
+        audio: false,
+      })
+      return { stream: selected, facingMode: inferredFacingMode(selected, facingMode) }
+    }
+
+    return { stream: provisionalStream, facingMode: actualFacing }
+  } catch (error) {
+    provisionalStream?.getTracks().forEach((track) => track.stop())
+    lastError = error
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    return { stream, facingMode: inferredFacingMode(stream, facingMode) }
+  } catch (error) {
+    lastError = error
+  }
+
   throw lastError instanceof Error ? lastError : new Error('Camera unavailable')
 }
 
@@ -62,13 +132,16 @@ type CameraModalPhase = 'idle' | 'loading' | 'preview' | 'error'
 export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) {
   const prefersReducedMotion = useReducedMotion()
   const fileRef = useRef<HTMLInputElement>(null)
-  const cameraRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const cameraStreamRef = useRef<MediaStream | null>(null)
   const scheduleIdRef = useRef(0)
   const [mounted, setMounted] = useState(false)
   const [guidanceOpen, setGuidanceOpen] = useState(true)
+  const [sourceOpen, setSourceOpen] = useState(false)
   const [cameraPhase, setCameraPhase] = useState<CameraModalPhase>('idle')
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const [cameraFacing, setCameraFacing] = useState<CameraFacingMode>('environment')
+  const [cameraSwitching, setCameraSwitching] = useState(false)
 
   const emptyCount = slots.filter((s) => s === null).length
 
@@ -77,10 +150,9 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
   }, [])
 
   const stopCameraStream = useCallback(() => {
-    setCameraStream((cur) => {
-      cur?.getTracks().forEach((t) => t.stop())
-      return null
-    })
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop())
+    cameraStreamRef.current = null
+    setCameraStream(null)
     const v = videoRef.current
     if (v) v.srcObject = null
   }, [])
@@ -132,7 +204,6 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
           return next
         })
         if (fileRef.current) fileRef.current.value = ''
-        if (cameraRef.current) cameraRef.current.value = ''
         return
       }
 
@@ -143,7 +214,6 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
       window.setTimeout(() => {
         if (scheduleIdRef.current === runId) {
           if (fileRef.current) fileRef.current.value = ''
-          if (cameraRef.current) cameraRef.current.value = ''
         }
       }, (toAdd.length - 1) * FLIP_STAGGER_MS + 80)
     },
@@ -154,17 +224,14 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
     scheduleAddFiles(Array.from(e.target.files || []))
   }
 
-  const handleCameraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
-    if (!f) return
-    scheduleAddFiles([f])
-    if (cameraRef.current) cameraRef.current.value = ''
-  }
-
-  const openGallery = () => fileRef.current?.click()
+  const openGallery = useCallback(() => {
+    setSourceOpen(false)
+    fileRef.current?.click()
+  }, [])
 
   const closeCameraModal = useCallback(() => {
     stopCameraStream()
+    setCameraSwitching(false)
     setCameraPhase('idle')
   }, [stopCameraStream])
 
@@ -191,27 +258,37 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
     )
   }, [scheduleAddFiles, closeCameraModal])
 
-  const openNativeCameraPicker = useCallback(() => {
-    cameraRef.current?.click()
-    closeCameraModal()
-  }, [closeCameraModal])
-
-  const openCamera = useCallback(async () => {
+  const startCamera = useCallback(async (facingMode: CameraFacingMode, switching = false) => {
     if (emptyCount === 0) return
     if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      cameraRef.current?.click()
+      setCameraPhase('error')
       return
     }
     stopCameraStream()
-    setCameraPhase('loading')
+    setCameraSwitching(switching)
+    if (!switching) setCameraPhase('loading')
     try {
-      const stream = await requestVideoStream()
-      setCameraStream(stream)
+      const requested = await requestVideoStream(facingMode)
+      cameraStreamRef.current = requested.stream
+      setCameraStream(requested.stream)
+      setCameraFacing(requested.facingMode)
       setCameraPhase('preview')
     } catch {
       setCameraPhase('error')
+    } finally {
+      setCameraSwitching(false)
     }
   }, [emptyCount, stopCameraStream])
+
+  const openCamera = useCallback(() => {
+    setSourceOpen(false)
+    return startCamera(cameraFacing)
+  }, [cameraFacing, startCamera])
+
+  const switchCamera = useCallback(() => {
+    const nextFacing: CameraFacingMode = cameraFacing === 'user' ? 'environment' : 'user'
+    return startCamera(nextFacing, true)
+  }, [cameraFacing, startCamera])
 
   const removeAt = (index: number) => {
     onSlotsChange((prev) => {
@@ -245,15 +322,6 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
         className="hidden"
         onChange={handleGalleryChange}
       />
-      {/* Fallback: OS camera / file picker (especially when getUserMedia is blocked or unsupported) */}
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleCameraChange}
-      />
     </>
   )
 
@@ -265,9 +333,12 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
       <CameraCaptureModal
         phase={cameraPhase}
         videoRef={videoRef}
+        facingMode={cameraFacing}
+        switching={cameraSwitching}
         onClose={closeCameraModal}
         onCapture={captureFromCamera}
-        onFallbackNative={openNativeCameraPicker}
+        onSwitchCamera={() => void switchCamera()}
+        onRetry={() => void openCamera()}
         onOpenGallery={() => {
           openGallery()
           closeCameraModal()
@@ -283,10 +354,27 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
     createPortal(
       <PhotoGuidanceModal
         onClose={() => setGuidanceOpen(false)}
-        onUpload={() => {
+        onCamera={() => {
+          setGuidanceOpen(false)
+          void openCamera()
+        }}
+        onGallery={() => {
           setGuidanceOpen(false)
           openGallery()
         }}
+      />,
+      document.body
+    )
+
+  const sourcePortal =
+    mounted &&
+    sourceOpen &&
+    typeof document !== 'undefined' &&
+    createPortal(
+      <PhotoSourceModal
+        onClose={() => setSourceOpen(false)}
+        onCamera={() => void openCamera()}
+        onGallery={openGallery}
       />,
       document.body
     )
@@ -309,8 +397,8 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
           disabled={emptyCount === 0}
           className="flex w-full max-w-[300px] items-center justify-center gap-2.5 rounded-full border border-white/18 bg-[oklch(0.16_0_0)] py-3.5 pl-5 pr-6 text-[11px] font-medium uppercase tracking-[0.18em] text-white transition hover:border-white/28 hover:bg-[oklch(0.19_0_0)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-35 sm:max-w-[340px] sm:text-xs"
         >
-          <Upload className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
-          Upload photos
+          <Images className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+          Choose from library
         </button>
         <span className="py-0.5 text-[9px] font-medium uppercase tracking-[0.35em] text-white/28">or</span>
         <button
@@ -320,7 +408,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
           className="flex w-full max-w-[300px] items-center justify-center gap-2.5 rounded-full border border-white/18 bg-[oklch(0.16_0_0)] py-3.5 pl-5 pr-6 text-[11px] font-medium uppercase tracking-[0.18em] text-white transition hover:border-white/28 hover:bg-[oklch(0.19_0_0)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-35 sm:max-w-[340px] sm:text-xs"
         >
           <Camera className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
-          Use my camera
+          Use guided camera
         </button>
       </div>
     </>
@@ -354,7 +442,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
                   <button
                     type="button"
                     key={`rm-${i}`}
-                    onClick={openGallery}
+                    onClick={() => setSourceOpen(true)}
                     className="group flex aspect-[3/4] min-w-0 items-center justify-center rounded-2xl border border-dashed border-white/32 transition hover:border-white/60 hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
                     aria-label={`Upload photo ${i + 1}`}
                   >
@@ -369,6 +457,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
           </div>
         </div>
         {guidancePortal}
+        {sourcePortal}
         {cameraPortal}
       </>
     )
@@ -394,7 +483,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
                 bodyIndex={i + 1}
                 slot={slot}
                 flipMs={FLIP_MS}
-                onAdd={openGallery}
+                onAdd={() => setSourceOpen(true)}
                 onRemove={() => removeAt(i)}
               />
             ))}
@@ -403,12 +492,21 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
         </motion.div>
       </div>
       {guidancePortal}
+      {sourcePortal}
       {cameraPortal}
     </>
   )
 }
 
-function PhotoGuidanceModal({ onClose, onUpload }: { onClose: () => void; onUpload: () => void }) {
+function PhotoGuidanceModal({
+  onClose,
+  onCamera,
+  onGallery,
+}: {
+  onClose: () => void
+  onCamera: () => void
+  onGallery: () => void
+}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -457,13 +555,106 @@ function PhotoGuidanceModal({ onClose, onUpload }: { onClose: () => void; onUplo
           You don&apos;t need to look a certain way. We just need to clearly see your natural proportions.
         </p>
 
-        <button
-          type="button"
-          onClick={onUpload}
-          className="mt-7 flex min-h-[50px] w-full items-center justify-center rounded-full bg-black px-6 text-[11px] font-medium uppercase tracking-[0.24em] text-white transition hover:bg-black/85 active:scale-[0.99]"
-        >
-          Upload
-        </button>
+        <div className="mt-7 grid gap-2.5">
+          <button
+            type="button"
+            onClick={onCamera}
+            className="flex min-h-[54px] w-full items-center justify-center gap-2.5 rounded-full bg-black px-6 text-[11px] font-medium uppercase tracking-[0.19em] text-white transition hover:bg-black/85 active:scale-[0.99]"
+          >
+            <Camera className="h-4 w-4" aria-hidden />
+            Use guided camera
+          </button>
+          <button
+            type="button"
+            onClick={onGallery}
+            className="flex min-h-[50px] w-full items-center justify-center gap-2.5 rounded-full border border-black/15 px-6 text-[10px] font-semibold uppercase tracking-[0.18em] text-black/68 transition hover:border-black/30 hover:text-black active:scale-[0.99]"
+          >
+            <Images className="h-4 w-4" aria-hidden />
+            Choose from library
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function PhotoSourceModal({
+  onClose,
+  onCamera,
+  onGallery,
+}: {
+  onClose: () => void
+  onCamera: () => void
+  onGallery: () => void
+}) {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-[310] flex items-end justify-center bg-black/78 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:items-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="photo-source-title"
+    >
+      <button type="button" className="absolute inset-0 cursor-default" aria-label="Close photo options" onClick={onClose} />
+      <motion.div
+        className="relative z-[1] w-full max-w-[430px] overflow-hidden rounded-[28px] border border-white/12 bg-[oklch(0.125_0_0)] p-4 shadow-[0_28px_90px_-25px_rgba(0,0,0,0.95)] sm:p-5"
+        initial={{ opacity: 0, y: 24, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="flex items-start justify-between gap-4 px-1 pb-4 pt-1">
+          <div>
+            <p className="text-[9px] font-medium uppercase tracking-[0.3em] text-white/38">Photo source</p>
+            <h2 id="photo-source-title" className="mt-2 font-serif text-[27px] leading-none tracking-[-0.02em] text-white">
+              Add a photo
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/[0.055] text-white/65 transition hover:bg-white/10 hover:text-white"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="grid gap-2.5">
+          <button
+            type="button"
+            onClick={onCamera}
+            className="group flex min-h-[82px] items-center gap-4 rounded-[20px] border border-white/14 bg-white/[0.045] px-5 text-left transition hover:border-white/28 hover:bg-white/[0.075] active:scale-[0.99]"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-black transition group-hover:scale-105">
+              <Camera className="h-5 w-5" aria-hidden />
+            </span>
+            <span>
+              <span className="block text-[11px] font-medium uppercase tracking-[0.16em] text-white">Guided camera</span>
+              <span className="mt-1 block text-[11px] leading-relaxed text-white/43">Live framing · front or rear lens</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onGallery}
+            className="group flex min-h-[76px] items-center gap-4 rounded-[20px] border border-white/10 px-5 text-left transition hover:border-white/22 hover:bg-white/[0.035] active:scale-[0.99]"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/[0.07] text-white/75 transition group-hover:bg-white/[0.11] group-hover:text-white">
+              <Images className="h-5 w-5" aria-hidden />
+            </span>
+            <span>
+              <span className="block text-[11px] font-medium uppercase tracking-[0.16em] text-white/82">Photo library</span>
+              <span className="mt-1 block text-[11px] leading-relaxed text-white/38">Choose an existing full-length photo</span>
+            </span>
+          </button>
+        </div>
       </motion.div>
     </div>
   )
@@ -472,16 +663,22 @@ function PhotoGuidanceModal({ onClose, onUpload }: { onClose: () => void; onUplo
 function CameraCaptureModal({
   phase,
   videoRef,
+  facingMode,
+  switching,
   onClose,
   onCapture,
-  onFallbackNative,
+  onSwitchCamera,
+  onRetry,
   onOpenGallery,
 }: {
   phase: Exclude<CameraModalPhase, 'idle'>
   videoRef: React.RefObject<HTMLVideoElement | null>
+  facingMode: CameraFacingMode
+  switching: boolean
   onClose: () => void
   onCapture: () => void
-  onFallbackNative: () => void
+  onSwitchCamera: () => void
+  onRetry: () => void
   onOpenGallery: () => void
 }) {
   const [videoReady, setVideoReady] = useState(false)
@@ -494,7 +691,7 @@ function CameraCaptureModal({
       setPoseFrame({ status: 'loading', points: [], alignment: 0 })
       setReadyProgress(0)
     }
-  }, [phase])
+  }, [phase, facingMode, switching])
 
   useEffect(() => {
     if (phase !== 'preview' || !videoReady) return
@@ -551,8 +748,9 @@ function CameraCaptureModal({
   }, [onClose])
 
   const captureReady =
-    videoReady && (poseFrame.status === 'unavailable' || (poseFrame.status === 'ready' && readyProgress >= 1))
+    !switching && videoReady && (poseFrame.status === 'unavailable' || (poseFrame.status === 'ready' && readyProgress >= 1))
   const guidance = CAMERA_GUIDANCE[poseFrame.status]
+  const mirrored = facingMode === 'user'
 
   return (
     <div
@@ -594,13 +792,31 @@ function CameraCaptureModal({
             <div className="relative overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
               <video
                 ref={videoRef}
-                className="max-h-[min(65dvh,520px)] w-full -scale-x-100 object-contain"
+                className={`max-h-[min(65dvh,520px)] w-full object-contain ${mirrored ? '-scale-x-100' : ''}`}
                 muted
                 playsInline
                 autoPlay
                 onLoadedData={() => setVideoReady(true)}
               />
-              <BodyFramingGuide status={poseFrame.status} points={poseFrame.points} />
+              <BodyFramingGuide status={poseFrame.status} points={poseFrame.points} mirrored={mirrored} />
+              <button
+                type="button"
+                onClick={onSwitchCamera}
+                disabled={switching}
+                className="absolute right-3 top-3 z-[2] flex min-h-10 items-center gap-2 rounded-full border border-white/20 bg-black/62 px-3.5 text-[9px] font-medium uppercase tracking-[0.16em] text-white shadow-lg backdrop-blur-md transition hover:border-white/38 hover:bg-black/78 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60"
+                aria-label={facingMode === 'user' ? 'Switch to rear camera' : 'Switch to front camera'}
+              >
+                {switching ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <SwitchCamera className="h-4 w-4" aria-hidden />}
+                {facingMode === 'user' ? 'Front' : 'Rear'}
+              </button>
+              {switching && (
+                <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-black/38 backdrop-blur-[2px]">
+                  <div className="flex items-center gap-2 rounded-full border border-white/15 bg-black/70 px-4 py-2 text-[9px] uppercase tracking-[0.18em] text-white/82">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                    Switching lens
+                  </div>
+                </div>
+              )}
               <div className="pointer-events-none absolute inset-x-3 bottom-3 flex justify-center">
                 <div
                   className={`max-w-[92%] rounded-full border px-4 py-2 text-center text-[9px] font-medium uppercase tracking-[0.16em] backdrop-blur-md transition-colors ${guidance.pill}`}
@@ -644,17 +860,17 @@ function CameraCaptureModal({
             <div className="flex flex-col gap-2">
               <button
                 type="button"
-                onClick={onFallbackNative}
+                onClick={onRetry}
                 className="rounded-full border border-white/18 bg-[oklch(0.17_0_0)] py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white transition hover:bg-[oklch(0.2_0_0)]"
               >
-                System camera / photo library
+                Retry guided camera
               </button>
               <button
                 type="button"
                 onClick={onOpenGallery}
                 className="rounded-full border border-white/12 bg-transparent py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/75 transition hover:border-white/20 hover:text-white"
               >
-                Upload from gallery
+                Choose from photo library
               </button>
               <button
                 type="button"
@@ -695,7 +911,15 @@ const POSE_CONNECTIONS = [
   [26, 28],
 ] as const
 
-function BodyFramingGuide({ status, points }: { status: LivePoseStatus; points: LivePoseFrame['points'] }) {
+function BodyFramingGuide({
+  status,
+  points,
+  mirrored,
+}: {
+  status: LivePoseStatus
+  points: LivePoseFrame['points']
+  mirrored: boolean
+}) {
   const guides = [
     { label: 'SHOULDERS', y: 118 },
     { label: 'WAIST', y: 245 },
@@ -704,6 +928,7 @@ function BodyFramingGuide({ status, points }: { status: LivePoseStatus; points: 
   ] as const
   const liveColor = status === 'ready' ? '#6ee7b7' : '#f8fafc'
   const showPose = points.length > 28
+  const pointX = (x: number) => (mirrored ? 1 - x : x) * 320
 
   return (
     <svg
@@ -744,9 +969,9 @@ function BodyFramingGuide({ status, points }: { status: LivePoseStatus; points: 
             return (
               <line
                 key={`${from}-${to}`}
-                x1={(1 - a.x) * 320}
+                x1={pointX(a.x)}
                 y1={a.y * 520}
-                x2={(1 - b.x) * 320}
+                x2={pointX(b.x)}
                 y2={b.y * 520}
                 stroke={liveColor}
                 strokeOpacity="0.9"
@@ -761,7 +986,7 @@ function BodyFramingGuide({ status, points }: { status: LivePoseStatus; points: 
             return (
               <circle
                 key={index}
-                cx={(1 - point.x) * 320}
+                cx={pointX(point.x)}
                 cy={point.y * 520}
                 r="3.25"
                 fill={liveColor}
