@@ -82,22 +82,22 @@ export const BODY_TYPE_PRESETS: Record<
       {
         name: 'Sofía Vergara',
         reason: 'Classic balanced curves with a defined waist',
-        imageSrc: '/celebrities/celebrity-1.jpg',
+        imageSrc: '/celebrities/sofia-vergara.webp',
       },
       {
         name: 'Beyoncé',
         reason: 'Full curves with a clear waist transition',
-        imageSrc: '/celebrities/celebrity-2.jpg',
+        imageSrc: '/celebrities/beyonce.webp',
       },
       {
         name: 'Scarlett Johansson',
         reason: 'Compact hourglass proportions on camera',
-        imageSrc: '/celebrities/celebrity-3.jpg',
+        imageSrc: '/celebrities/scarlett-johansson.webp',
       },
       {
         name: 'Marilyn Monroe',
         reason: 'Iconic hourglass reference in fashion history',
-        imageSrc: '/celebrities/celebrity-4.jpg',
+        imageSrc: '/celebrities/marilyn-monroe.webp',
       },
     ],
     styleRecommendations: [
@@ -127,22 +127,22 @@ export const BODY_TYPE_PRESETS: Record<
       {
         name: 'Keira Knightley',
         reason: 'Straight silhouette often styled with waist emphasis',
-        imageSrc: '/celebrities/celebrity-1.jpg',
+        imageSrc: '/celebrities/keira-knightley.webp',
       },
       {
         name: 'Natalie Portman',
         reason: 'Lean rectangle lines on the red carpet',
-        imageSrc: '/celebrities/celebrity-2.jpg',
+        imageSrc: '/celebrities/natalie-portman.webp',
       },
       {
         name: 'Zendaya',
         reason: 'Long lines; stylists add shape through tailoring',
-        imageSrc: '/celebrities/celebrity-3.jpg',
+        imageSrc: '/celebrities/zendaya.webp',
       },
       {
         name: 'Cameron Diaz',
         reason: 'Athletic rectangle build in classic styling',
-        imageSrc: '/celebrities/celebrity-4.jpg',
+        imageSrc: '/celebrities/cameron-diaz.webp',
       },
     ],
     styleRecommendations: [
@@ -172,22 +172,22 @@ export const BODY_TYPE_PRESETS: Record<
       {
         name: 'Jennifer Lopez',
         reason: 'Curvier lower body with strong styling balance',
-        imageSrc: '/celebrities/celebrity-1.jpg',
+        imageSrc: '/celebrities/jennifer-lopez.webp',
       },
       {
         name: 'Shakira',
         reason: 'Hip-forward silhouette often balanced on stage',
-        imageSrc: '/celebrities/celebrity-2.jpg',
+        imageSrc: '/celebrities/shakira.webp',
       },
       {
         name: 'America Ferrera',
         reason: 'Pear-leaning proportions in tailored looks',
-        imageSrc: '/celebrities/celebrity-3.jpg',
+        imageSrc: '/celebrities/america-ferrera.webp',
       },
       {
         name: 'Rihanna',
         reason: 'Often styled to balance shoulders and hips',
-        imageSrc: '/celebrities/celebrity-4.jpg',
+        imageSrc: '/celebrities/rihanna.webp',
       },
     ],
     styleRecommendations: [
@@ -217,22 +217,22 @@ export const BODY_TYPE_PRESETS: Record<
       {
         name: 'Drew Barrymore',
         reason: 'Soft midsection often styled with flowing lines',
-        imageSrc: '/celebrities/celebrity-1.jpg',
+        imageSrc: '/celebrities/drew-barrymore.webp',
       },
       {
         name: 'Melissa McCarthy',
         reason: 'Great example of apple-friendly tailoring on screen',
-        imageSrc: '/celebrities/celebrity-2.jpg',
+        imageSrc: '/celebrities/melissa-mccarthy.webp',
       },
       {
         name: 'Queen Latifah',
         reason: 'Strong vertical styling and empire silhouettes',
-        imageSrc: '/celebrities/celebrity-3.jpg',
+        imageSrc: '/celebrities/queen-latifah.webp',
       },
       {
         name: 'Oprah Winfrey',
         reason: 'Classic apple proportions in polished tailoring',
-        imageSrc: '/celebrities/celebrity-4.jpg',
+        imageSrc: '/celebrities/oprah-winfrey.webp',
       },
     ],
     styleRecommendations: [
@@ -262,22 +262,22 @@ export const BODY_TYPE_PRESETS: Record<
       {
         name: 'Angelina Jolie',
         reason: 'Broad shoulders often balanced with soft skirts',
-        imageSrc: '/celebrities/celebrity-1.jpg',
+        imageSrc: '/celebrities/angelina-jolie.webp',
       },
       {
         name: 'Naomi Campbell',
         reason: 'Runway shoulders with stylists adding hip volume',
-        imageSrc: '/celebrities/celebrity-2.jpg',
+        imageSrc: '/celebrities/naomi-campbell.webp',
       },
       {
         name: 'Demi Moore',
         reason: 'Athletic inverted triangle in tailored looks',
-        imageSrc: '/celebrities/celebrity-3.jpg',
+        imageSrc: '/celebrities/demi-moore.webp',
       },
       {
         name: 'Renée Zellweger',
         reason: 'Broader upper frame styled with A-line shapes',
-        imageSrc: '/celebrities/celebrity-4.jpg',
+        imageSrc: '/celebrities/renee-zellweger.webp',
       },
     ],
     styleRecommendations: [
@@ -293,62 +293,63 @@ export const BODY_TYPE_PRESETS: Record<
 /**
  * Curated editorial intro + shoppable picks per silhouette (Figma 327:423).
  * Kept separate from BODY_TYPE_PRESETS so styling copy and catalog evolve
- * independently. Images are local placeholders under /public/portraits.
+ * independently. Every product uses a locally optimized image sourced from
+ * its retailer page; price labels remain live-link based to avoid stale copy.
  */
 export const STYLE_EDITORIAL: Record<BodyTypeId, { intro: string; products: StyleProduct[] }> = {
   hourglass: {
     intro:
       'Your superpower is balance — so the goal is to honor the waist, never bury it. These are the pieces that follow your curves instead of fighting them, from waist-defining knits to high-rise denim that lets your proportions do the talking.',
     products: [
-      { brand: 'Zara', name: 'Z1975 High-Rise Straight Jeans', price: 'View current price', image: '/portraits/woman-1.jpg', stylingNote: 'A clean high rise keeps the waist as the focal point.', shopUrl: 'https://www.zara.com/us/en/z1975-hi-rise-straight-jeans-p01934041.html' },
-      { brand: 'Abercrombie & Fitch', name: 'Wide-Leg Trousers', price: 'View current price', image: '/portraits/woman-2.jpg', stylingNote: 'A structured waist and wider leg preserve your natural balance.', shopUrl: 'https://www.abercrombie.com/shop/us/womens-bottoms-wide-leg-pants-pants' },
-      { brand: 'H&M', name: 'Wrap Dress', price: 'View current price', image: '/portraits/woman-3.jpg', stylingNote: 'The wrap construction follows the waist without hiding it.', shopUrl: 'https://www2.hm.com/en_us/productpage.1285149003.html' },
-      { brand: 'Everlane', name: 'Belted Trench Coat', price: '$168', image: '/portraits/woman-4.jpg', stylingNote: 'Cinch the belt and let the rest fall open.' },
-      { brand: 'Mango', name: 'Medium-Width Leather Belt', price: '$30', image: '/portraits/woman-5.jpg', stylingNote: 'My go-to for redefining the waist over knits.' },
+      { brand: 'Zara', name: 'Z1975 High-Rise Straight Jeans', price: 'View current price', image: '/products/zara-z1975-hi-rise-straight-jeans.webp', stylingNote: 'A clean high rise keeps the waist as the focal point.', shopUrl: 'https://www.zara.com/us/en/z1975-hi-rise-straight-jeans-p01934041.html' },
+      { brand: 'Abercrombie & Fitch', name: 'A&F Sloane Tailored Wide-Leg Pant', price: 'View current price', image: '/products/abercrombie-sloane-wide-leg-pant.webp', stylingNote: 'A structured waist and wider leg preserve your natural balance.', shopUrl: 'https://www.abercrombie.com/shop/us/p/tailored-wide-leg-pants-51625331' },
+      { brand: 'H&M', name: 'Wrap Dress', price: 'View current price', image: '/products/hm-wrap-dress.webp', stylingNote: 'The wrap construction follows the waist without hiding it.', shopUrl: 'https://www2.hm.com/en_us/productpage.1285149003.html' },
+      { brand: 'Zara Pre-Owned', name: 'Belted Wool Blazer', price: 'View current price', image: '/products/zara-belted-wool-blazer.webp', stylingNote: 'The belt creates definition while the soft tailoring follows your curves.', shopUrl: 'https://www.zara.com/us/en/preowned-resell/product-detail/1713554' },
+      { brand: 'Zara', name: 'Striped Pleated Balloon Pants', price: 'View current price', image: '/products/zara-striped-pleated-balloon-pants.webp', stylingNote: 'A fitted waist and full leg keep the top-to-bottom balance intact.', shopUrl: 'https://www.zara.com/us/en/striped-pleated-balloon-pants-p01255527.html' },
     ],
   },
   rectangle: {
     intro:
       "Straight, clean lines are a blank canvas — you get to build curve wherever you want it. These picks add shape through cut, volume and belting, so you can create a waist on demand and play with proportion all season.",
     products: [
-      { brand: 'H&M', name: 'Relaxed Button-Down Shirt', price: 'View current price', image: '/portraits/woman-2.jpg', stylingNote: 'The relaxed line adds dimension while the buttons lead the eye vertically.', shopUrl: 'https://www2.hm.com/en_us/productpage.1344514001.html' },
-      { brand: 'Zara', name: 'Striped Pleated Balloon Pants', price: 'View current price', image: '/portraits/woman-3.jpg', stylingNote: 'Pleats add gentle hip volume and a clear waist break.', shopUrl: 'https://www.zara.com/us/en/striped-pleated-balloon-pants-p01255527.html' },
-      { brand: 'Zara', name: 'Z1975 High-Rise Straight Jeans', price: 'View current price', image: '/portraits/woman-4.jpg', stylingNote: 'A straight leg creates a clean, elongating base.', shopUrl: 'https://www.zara.com/us/en/z1975-hi-rise-straight-jeans-p01934041.html' },
-      { brand: 'Zara Pre-Owned', name: 'Belted Blazer', price: 'View current price', image: '/portraits/woman-5.jpg', stylingNote: 'The belt adds instant structure and creates waist definition.', shopUrl: 'https://www.zara.com/us/en/preowned-resell/product-detail/1713554' },
-      { brand: '& Other Stories', name: 'Statement Waist Belt', price: '$45', image: '/portraits/woman-6.jpg', stylingNote: 'Cinch it over anything boxy to carve a shape.' },
+      { brand: 'H&M', name: 'Relaxed Button-Down Shirt', price: 'View current price', image: '/products/hm-relaxed-button-down-shirt.webp', stylingNote: 'The relaxed line adds dimension while the buttons lead the eye vertically.', shopUrl: 'https://www2.hm.com/en_us/productpage.1344514001.html' },
+      { brand: 'Zara', name: 'Striped Pleated Balloon Pants', price: 'View current price', image: '/products/zara-striped-pleated-balloon-pants.webp', stylingNote: 'Pleats add gentle hip volume and a clear waist break.', shopUrl: 'https://www.zara.com/us/en/striped-pleated-balloon-pants-p01255527.html' },
+      { brand: 'Abercrombie & Fitch', name: 'A&F Sloane Tailored Wide-Leg Pant', price: 'View current price', image: '/products/abercrombie-sloane-wide-leg-pant.webp', stylingNote: 'A tailored waistband creates shape while the leg adds movement.', shopUrl: 'https://www.abercrombie.com/shop/us/p/tailored-wide-leg-pants-51625331' },
+      { brand: 'Zara', name: 'ZW Collection Curved Straight Jeans', price: 'View current price', image: '/products/zara-curved-straight-jeans.webp', stylingNote: 'The curved cut builds dimension through the hip and leg.', shopUrl: 'https://www.zara.com/us/en/zw-collection-curved-straight-mid-rise-jeans-p09632273.html' },
+      { brand: 'Zara Pre-Owned', name: 'Belted Wool Blazer', price: 'View current price', image: '/products/zara-belted-wool-blazer.webp', stylingNote: 'The belt adds instant structure and creates waist definition.', shopUrl: 'https://www.zara.com/us/en/preowned-resell/product-detail/1713554' },
     ],
   },
   pear: {
     intro:
       'The play here is balance — draw the eye up and let the lower half stay simple and fluid. Think detailed, brighter tops, structured shoulders, and bottoms that skim rather than cling.',
     products: [
-      { brand: 'BP.', name: 'Boat-Neck Structured Top', price: '$42', image: '/portraits/woman-3.jpg', stylingNote: 'Widens the shoulder line to balance the hips.' },
-      { brand: 'AGOLDE', name: 'Dark Wash Straight Jean', price: '$118', image: '/portraits/woman-4.jpg', stylingNote: 'A dark, clean leg streamlines the lower half.' },
-      { brand: 'Reformation', name: 'A-Line Midi Skirt', price: '$98', image: '/portraits/woman-5.jpg', stylingNote: 'Glides over the hips without grabbing.' },
-      { brand: 'Zara', name: 'Off-Shoulder Detail Blouse', price: '$56', image: '/portraits/woman-6.jpg', stylingNote: 'All the attention stays up top — exactly where we want it.' },
-      { brand: 'Mejuri', name: 'Statement Drop Earrings', price: '$75', image: '/portraits/woman-1.jpg', stylingNote: 'Keeps the focus near the face and shoulders.' },
+      { brand: 'H&M', name: 'Relaxed Button-Down Shirt', price: 'View current price', image: '/products/hm-relaxed-button-down-shirt.webp', stylingNote: 'The crisp collar and lighter color draw attention upward.', shopUrl: 'https://www2.hm.com/en_us/productpage.1344514001.html' },
+      { brand: 'Zara', name: 'Z1975 High-Rise Straight Jeans', price: 'View current price', image: '/products/zara-z1975-hi-rise-straight-jeans.webp', stylingNote: 'A clean straight leg skims the lower half without clinging.', shopUrl: 'https://www.zara.com/us/en/z1975-hi-rise-straight-jeans-p01934041.html' },
+      { brand: 'Zara', name: 'Striped Pleated Balloon Pants', price: 'View current price', image: '/products/zara-striped-pleated-balloon-pants.webp', stylingNote: 'Fluid volume falls from a defined waist and moves away from the hip.', shopUrl: 'https://www.zara.com/us/en/striped-pleated-balloon-pants-p01255527.html' },
+      { brand: 'Abercrombie & Fitch', name: 'A&F Sloane Tailored Wide-Leg Pant', price: 'View current price', image: '/products/abercrombie-sloane-wide-leg-pant.webp', stylingNote: 'A full-length tailored leg creates one long, balanced line.', shopUrl: 'https://www.abercrombie.com/shop/us/p/tailored-wide-leg-pants-51625331' },
+      { brand: 'H&M', name: 'Wrap Dress', price: 'View current price', image: '/products/hm-wrap-dress.webp', stylingNote: 'The wrap defines the waist and the skirt releases cleanly over the hips.', shopUrl: 'https://www2.hm.com/en_us/productpage.1285149003.html' },
     ],
   },
   apple: {
     intro:
       'Flowing, vertical lines are your best friend — pieces that skim the midsection and open up the neckline feel effortless. These picks elongate and float instead of cling.',
     products: [
-      { brand: 'BP.', name: 'V-Neck Empire Tunic', price: '$48', image: '/portraits/woman-4.jpg', stylingNote: 'Floats over the midsection with a flattering V.' },
-      { brand: 'Vince', name: 'Straight-Leg Trouser', price: '$135', image: '/portraits/woman-5.jpg', stylingNote: 'Balances a softer torso with a clean line.' },
-      { brand: 'Reformation', name: 'Trapeze Shift Dress', price: '$120', image: '/portraits/woman-6.jpg', stylingNote: 'Skims without pulling across the waist.' },
-      { brand: 'Everlane', name: 'Open-Front Longline Cardigan', price: '$98', image: '/portraits/woman-1.jpg', stylingNote: 'Adds two long vertical lines down the front.' },
-      { brand: 'Madewell', name: 'Long Pendant Necklace', price: '$42', image: '/portraits/woman-2.jpg', stylingNote: 'A vertical focal point that draws the eye down.' },
+      { brand: 'H&M', name: 'Wrap Dress', price: 'View current price', image: '/products/hm-wrap-dress.webp', stylingNote: 'A V neckline and diagonal wrap create a long, open line.', shopUrl: 'https://www2.hm.com/en_us/productpage.1285149003.html' },
+      { brand: 'H&M', name: 'Relaxed Button-Down Shirt', price: 'View current price', image: '/products/hm-relaxed-button-down-shirt.webp', stylingNote: 'Wear it slightly open for an easy vertical break through the torso.', shopUrl: 'https://www2.hm.com/en_us/productpage.1344514001.html' },
+      { brand: 'Abercrombie & Fitch', name: 'A&F Sloane Tailored Wide-Leg Pant', price: 'View current price', image: '/products/abercrombie-sloane-wide-leg-pant.webp', stylingNote: 'The clean leg balances the torso with structure below.', shopUrl: 'https://www.abercrombie.com/shop/us/p/tailored-wide-leg-pants-51625331' },
+      { brand: 'Zara', name: 'ZW Collection Curved Straight Jeans', price: 'View current price', image: '/products/zara-curved-straight-jeans.webp', stylingNote: 'A straighter leg keeps the silhouette clean and uninterrupted.', shopUrl: 'https://www.zara.com/us/en/zw-collection-curved-straight-mid-rise-jeans-p09632273.html' },
+      { brand: 'Zara Pre-Owned', name: 'Belted Wool Blazer', price: 'View current price', image: '/products/zara-belted-wool-blazer.webp', stylingNote: 'Wear it open for vertical length or softly tied for definition.', shopUrl: 'https://www.zara.com/us/en/preowned-resell/product-detail/1713554' },
     ],
   },
   'inverted-triangle': {
     intro:
       'The goal is to soften the shoulder line and add gentle volume below the waist. These picks bring fluidity up top and structure or movement on the bottom to even out a strong upper frame.',
     products: [
-      { brand: 'BP.', name: 'Scoop-Neck Fluid Tee', price: '$34', image: '/portraits/woman-5.jpg', stylingNote: 'A soft neckline takes the edge off broad shoulders.' },
-      { brand: 'AGOLDE', name: 'Flared Bootcut Jean', price: '$128', image: '/portraits/woman-6.jpg', stylingNote: 'Adds proportion below the hip to balance the top.' },
-      { brand: 'Sézane', name: 'Full A-Line Skirt', price: '$115', image: '/portraits/woman-1.jpg', stylingNote: 'Volume below the waist evens everything out.' },
-      { brand: 'Aritzia', name: 'Waterfall Trench', price: '$158', image: '/portraits/woman-2.jpg', stylingNote: 'Unlined and fluid — no extra bulk on top.' },
-      { brand: '& Other Stories', name: 'Low-Slung Hip Belt', price: '$40', image: '/portraits/woman-3.jpg', stylingNote: 'Pulls the eye down toward the lower body.' },
+      { brand: 'H&M', name: 'Relaxed Button-Down Shirt', price: 'View current price', image: '/products/hm-relaxed-button-down-shirt.webp', stylingNote: 'A fluid shoulder and open neckline soften the upper frame.', shopUrl: 'https://www2.hm.com/en_us/productpage.1344514001.html' },
+      { brand: 'Abercrombie & Fitch', name: 'A&F Sloane Tailored Wide-Leg Pant', price: 'View current price', image: '/products/abercrombie-sloane-wide-leg-pant.webp', stylingNote: 'The wide leg adds proportion below the hip.', shopUrl: 'https://www.abercrombie.com/shop/us/p/tailored-wide-leg-pants-51625331' },
+      { brand: 'Zara', name: 'Striped Pleated Balloon Pants', price: 'View current price', image: '/products/zara-striped-pleated-balloon-pants.webp', stylingNote: 'Pleats and a balloon line bring movement to the lower half.', shopUrl: 'https://www.zara.com/us/en/striped-pleated-balloon-pants-p01255527.html' },
+      { brand: 'Zara', name: 'ZW Collection Curved Straight Jeans', price: 'View current price', image: '/products/zara-curved-straight-jeans.webp', stylingNote: 'The curved cut builds a little more dimension through the hip.', shopUrl: 'https://www.zara.com/us/en/zw-collection-curved-straight-mid-rise-jeans-p09632273.html' },
+      { brand: 'H&M', name: 'Wrap Dress', price: 'View current price', image: '/products/hm-wrap-dress.webp', stylingNote: 'A softer top and fuller skirt redirect the eye below the shoulder.', shopUrl: 'https://www2.hm.com/en_us/productpage.1285149003.html' },
     ],
   },
 }

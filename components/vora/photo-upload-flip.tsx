@@ -7,6 +7,12 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { Camera, Loader2, Upload, X } from 'lucide-react'
 import { PhotoGuidanceList } from './photo-guidance'
 import { VORA_UPLOAD_PANEL_MAX } from './vora-layout'
+import {
+  detectLivePose,
+  preloadLivePoseGuide,
+  type LivePoseFrame,
+  type LivePoseStatus,
+} from '@/lib/live-pose-guide'
 
 export type FlipPhotoSlot = {
   file: File
@@ -479,10 +485,62 @@ function CameraCaptureModal({
   onOpenGallery: () => void
 }) {
   const [videoReady, setVideoReady] = useState(false)
+  const [poseFrame, setPoseFrame] = useState<LivePoseFrame>({ status: 'loading', points: [], alignment: 0 })
+  const [readyProgress, setReadyProgress] = useState(0)
 
   useEffect(() => {
-    if (phase !== 'preview') setVideoReady(false)
+    if (phase !== 'preview') {
+      setVideoReady(false)
+      setPoseFrame({ status: 'loading', points: [], alignment: 0 })
+      setReadyProgress(0)
+    }
   }, [phase])
+
+  useEffect(() => {
+    if (phase !== 'preview' || !videoReady) return
+    const video = videoRef.current
+    if (!video) return
+
+    let active = true
+    let animationFrame = 0
+    let lastInference = 0
+    let inferenceRunning = false
+    let stableSince = 0
+
+    void preloadLivePoseGuide().catch(() => {
+      if (active) setPoseFrame({ status: 'unavailable', points: [], alignment: 0 })
+    })
+
+    const update = (now: number) => {
+      if (!active) return
+      if (video.readyState >= 2 && now - lastInference >= 90 && !inferenceRunning) {
+        lastInference = now
+        inferenceRunning = true
+        void detectLivePose(video, now)
+          .then((frame) => {
+            if (!active) return
+            setPoseFrame(frame)
+            if (frame.status === 'ready') {
+              if (!stableSince) stableSince = now
+              setReadyProgress(Math.min(1, (now - stableSince) / 900))
+            } else {
+              stableSince = 0
+              setReadyProgress(frame.status === 'unavailable' ? 1 : 0)
+            }
+          })
+          .finally(() => {
+            inferenceRunning = false
+          })
+      }
+      animationFrame = window.requestAnimationFrame(update)
+    }
+
+    animationFrame = window.requestAnimationFrame(update)
+    return () => {
+      active = false
+      window.cancelAnimationFrame(animationFrame)
+    }
+  }, [phase, videoReady, videoRef])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -491,6 +549,10 @@ function CameraCaptureModal({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  const captureReady =
+    videoReady && (poseFrame.status === 'unavailable' || (poseFrame.status === 'ready' && readyProgress >= 1))
+  const guidance = CAMERA_GUIDANCE[poseFrame.status]
 
   return (
     <div
@@ -532,16 +594,26 @@ function CameraCaptureModal({
             <div className="relative overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
               <video
                 ref={videoRef}
-                className="max-h-[min(65dvh,520px)] w-full object-contain"
+                className="max-h-[min(65dvh,520px)] w-full -scale-x-100 object-contain"
                 muted
                 playsInline
                 autoPlay
                 onLoadedData={() => setVideoReady(true)}
               />
-              <BodyFramingGuide />
+              <BodyFramingGuide status={poseFrame.status} points={poseFrame.points} />
+              <div className="pointer-events-none absolute inset-x-3 bottom-3 flex justify-center">
+                <div
+                  className={`max-w-[92%] rounded-full border px-4 py-2 text-center text-[9px] font-medium uppercase tracking-[0.16em] backdrop-blur-md transition-colors ${guidance.pill}`}
+                  aria-live="polite"
+                >
+                  {poseFrame.status === 'ready' && readyProgress < 1
+                    ? `Hold still · ${Math.round(readyProgress * 100)}%`
+                    : guidance.label}
+                </div>
+              </div>
             </div>
             <p className="text-center text-[11px] leading-relaxed text-white/45">
-              Step back and align your head, shoulders, waist, hips and feet with the guide before capturing.
+              The guide checks framing, distance and posture on your device. No live camera frames are uploaded.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button
@@ -554,10 +626,10 @@ function CameraCaptureModal({
               <button
                 type="button"
                 onClick={onCapture}
-                disabled={!videoReady}
+                disabled={!captureReady}
                 className="rounded-full border border-white/20 bg-white/10 px-5 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Capture photo
+                {captureReady ? 'Capture photo' : 'Align your body'}
               </button>
             </div>
           </div>
@@ -599,13 +671,39 @@ function CameraCaptureModal({
   )
 }
 
-function BodyFramingGuide() {
+const CAMERA_GUIDANCE: Record<LivePoseStatus, { label: string; pill: string }> = {
+  loading: { label: 'Preparing body guide…', pill: 'border-white/15 bg-black/45 text-white/70' },
+  no_body: { label: 'Step into frame', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
+  low_visibility: { label: 'Use brighter, even light', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
+  not_full_body: { label: 'Show head and feet', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
+  too_close: { label: 'Step back', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
+  too_far: { label: 'Move a little closer', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
+  off_center: { label: 'Center your body', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
+  posture: { label: 'Relax and stand naturally', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
+  ready: { label: 'Ready to capture', pill: 'border-emerald-300/45 bg-emerald-950/55 text-emerald-50' },
+  unavailable: { label: 'Manual capture available', pill: 'border-white/20 bg-black/55 text-white/75' },
+}
+
+const POSE_CONNECTIONS = [
+  [11, 12],
+  [11, 23],
+  [12, 24],
+  [23, 24],
+  [23, 25],
+  [24, 26],
+  [25, 27],
+  [26, 28],
+] as const
+
+function BodyFramingGuide({ status, points }: { status: LivePoseStatus; points: LivePoseFrame['points'] }) {
   const guides = [
     { label: 'SHOULDERS', y: 118 },
     { label: 'WAIST', y: 245 },
     { label: 'HIPS', y: 350 },
     { label: 'FEET', y: 488 },
   ] as const
+  const liveColor = status === 'ready' ? '#6ee7b7' : '#f8fafc'
+  const showPose = points.length > 28
 
   return (
     <svg
@@ -614,7 +712,15 @@ function BodyFramingGuide() {
       className="pointer-events-none absolute inset-0 h-full w-full text-white"
       aria-hidden
     >
-      <rect x="1" y="1" width="318" height="518" rx="18" fill="none" stroke="currentColor" strokeOpacity="0.14" />
+      <defs>
+        <linearGradient id="vora-camera-scan" x1="0" x2="1">
+          <stop offset="0" stopColor={liveColor} stopOpacity="0" />
+          <stop offset="0.5" stopColor={liveColor} stopOpacity="0.72" />
+          <stop offset="1" stopColor={liveColor} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <rect x="1" y="1" width="318" height="518" rx="18" fill="none" stroke={liveColor} strokeOpacity="0.25" />
+      <path d="M18 52V25a10 10 0 0 1 10-10h28M264 15h28a10 10 0 0 1 10 10v27M302 468v27a10 10 0 0 1-10 10h-28M56 505H28a10 10 0 0 1-10-10v-27" fill="none" stroke={liveColor} strokeOpacity="0.75" strokeWidth="2" />
       <circle cx="160" cy="58" r="31" fill="none" stroke="currentColor" strokeOpacity="0.72" strokeWidth="1.5" strokeDasharray="5 6" />
       <line x1="160" y1="89" x2="160" y2="488" stroke="currentColor" strokeOpacity="0.55" strokeWidth="1.25" strokeDasharray="6 7" />
       <text x="160" y="18" textAnchor="middle" fill="currentColor" fillOpacity="0.78" fontSize="8" letterSpacing="1.6">
@@ -629,6 +735,48 @@ function BodyFramingGuide() {
           </text>
         </g>
       ))}
+      {showPose && (
+        <g>
+          {POSE_CONNECTIONS.map(([from, to]) => {
+            const a = points[from]
+            const b = points[to]
+            if (!a || !b || a.visibility < 0.35 || b.visibility < 0.35) return null
+            return (
+              <line
+                key={`${from}-${to}`}
+                x1={(1 - a.x) * 320}
+                y1={a.y * 520}
+                x2={(1 - b.x) * 320}
+                y2={b.y * 520}
+                stroke={liveColor}
+                strokeOpacity="0.9"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            )
+          })}
+          {[0, 11, 12, 23, 24, 25, 26, 27, 28].map((index) => {
+            const point = points[index]
+            if (!point || point.visibility < 0.35) return null
+            return (
+              <circle
+                key={index}
+                cx={(1 - point.x) * 320}
+                cy={point.y * 520}
+                r="3.25"
+                fill={liveColor}
+                fillOpacity="0.95"
+                stroke="#050505"
+                strokeOpacity="0.5"
+                strokeWidth="1"
+              />
+            )
+          })}
+        </g>
+      )}
+      <rect x="24" y="0" width="272" height="2" fill="url(#vora-camera-scan)" opacity="0.85">
+        <animate attributeName="y" values="34;480;34" dur="3.2s" repeatCount="indefinite" />
+      </rect>
     </svg>
   )
 }

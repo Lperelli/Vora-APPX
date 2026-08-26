@@ -145,7 +145,7 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRedo }: StyleRe
           >
             <div className="relative aspect-square min-h-0 overflow-hidden bg-black sm:aspect-auto sm:min-h-[360px]">
               <Image
-                src={relatedArticle.image}
+                src={asset(relatedArticle.image)}
                 alt=""
                 fill
                 unoptimized

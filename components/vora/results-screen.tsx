@@ -95,8 +95,9 @@ const FALLBACK_CELEB_IMAGES = [
   '/celebrities/celebrity-4.jpg',
 ]
 
-// Deferred for the MVP until VORA confirms image-usage rights.
-const SHOW_CELEBRITIES_IN_MVP = false
+// Images are locally optimized derivatives from openly licensed Commons files.
+// Final editorial/personality-rights approval still belongs to VORA.
+const SHOW_CELEBRITIES_IN_MVP = true
 
 interface ResultsScreenProps {
   analysis: BodyAnalysis
@@ -346,6 +347,18 @@ function CelebrityReferences({
             prefersReducedMotion={prefersReducedMotion}
           />
         ))}
+      </div>
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[8px] uppercase tracking-[0.16em] text-foreground/35">
+        <span>Editorial references only</span>
+        <span aria-hidden>·</span>
+        <a
+          href={asset('/celebrities/credits.html')}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline decoration-white/20 underline-offset-4 transition hover:text-foreground/60"
+        >
+          Image credits
+        </a>
       </div>
     </motion.section>
   )

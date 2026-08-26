@@ -13,7 +13,7 @@ const BLOG_ORIGIN = 'https://vora-blog.webflow.io'
  * Published Webflow CMS articles that close the loop from the app back into
  * VORA's editorial site. Pear is called Triangle in the journal.
  *
- * Apple is intentionally absent: no matching CMS article exists yet.
+ * Apple is included alongside the four original CMS body-shape articles.
  */
 export const BODY_TYPE_ARTICLES: Partial<Record<BodyTypeId, BodyTypeArticle>> = {
   hourglass: {
@@ -39,6 +39,13 @@ export const BODY_TYPE_ARTICLES: Partial<Record<BodyTypeId, BodyTypeArticle>> = 
     url: `${BLOG_ORIGIN}/post/triangle-body-shape-the-essentials-for-your-closet`,
     image:
       'https://cdn.prod.website-files.com/69d083806c31fde4aa05b52f/6a66d0d180acd9f6e6a870f5_TRIANGULO%201.webp',
+  },
+  apple: {
+    title: 'Apple Body Shape | The Essentials for Your Closet',
+    summary:
+      'Discover open necklines, fluid layers, and polished vertical lines that skim the torso and keep every outfit feeling effortless.',
+    url: `${BLOG_ORIGIN}/post/apple-body-shape-the-essentials-for-your-closet`,
+    image: '/products/hm-wrap-dress.webp',
   },
   'inverted-triangle': {
     title: 'Inverted Triangle Body Shape | The Essentials for Your Closet',
