@@ -70,7 +70,7 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRedo }: StyleRe
         {products.map((product, i) => (
           <motion.article
             key={`${product.brand}-${product.name}`}
-            className="flex min-w-0 flex-col border border-white/[0.07] bg-[oklch(0.12_0_0)]"
+            className="flex min-w-0 flex-col overflow-hidden rounded-[4px] border border-white/[0.07] bg-[oklch(0.12_0_0)]"
             initial={prefersReducedMotion ? false : { opacity: 0, y: 16, filter: 'blur(10px)' }}
             whileInView={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
             viewport={{ once: true, amount: 0.3 }}
@@ -141,7 +141,7 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRedo }: StyleRe
           <a
             href={relatedArticle.url}
             target="_top"
-            className="group grid overflow-hidden border border-white/[0.08] bg-[oklch(0.12_0_0)] sm:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)]"
+            className="group grid overflow-hidden rounded-[4px] border border-white/[0.08] bg-[oklch(0.12_0_0)] sm:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)]"
           >
             <div className="relative aspect-square min-h-0 overflow-hidden bg-black sm:aspect-auto sm:min-h-[360px]">
               <Image
