@@ -49,7 +49,11 @@ function inferredFacingMode(stream: MediaStream, fallback: CameraFacingMode): Ca
  * this call is important on iOS: Safari often keeps the front lens otherwise.
  */
 async function requestVideoStream(facingMode: CameraFacingMode): Promise<RequestedVideoStream> {
-  const size = { width: { ideal: 1920 }, height: { ideal: 1080 } }
+  const size = {
+    width: { ideal: 1080 },
+    height: { ideal: 1440 },
+    aspectRatio: { ideal: 0.75 },
+  }
   let lastError: unknown
 
   try {
@@ -420,14 +424,14 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
         <div className={`${VORA_UPLOAD_PANEL_MAX} px-1 sm:px-2`}>
           {hiddenInputs}
           <div
-            className="rounded-3xl border border-white/10 bg-[oklch(0.13_0_0)] px-4 py-5 shadow-[0_24px_70px_-28px_rgba(0,0,0,0.85)] sm:px-6 sm:py-6"
+            className="rounded-[20px] border border-white/10 bg-[oklch(0.13_0_0)] px-4 py-5 shadow-[0_24px_70px_-28px_rgba(0,0,0,0.85)] sm:px-6 sm:py-6"
             onDragOver={handleDragOver}
             onDrop={handleDrop}
           >
             <div className="grid min-w-0 grid-cols-3 gap-2 sm:gap-3">
               {slots.map((slot, i) =>
                 slot ? (
-                  <div key={slot.preview} className="relative aspect-[3/4] min-w-0 overflow-hidden rounded-2xl ring-1 ring-white/12">
+                  <div key={slot.preview} className="relative aspect-[3/4] min-w-0 overflow-hidden rounded-[4px] ring-1 ring-white/12">
                     <Image src={slot.preview} alt="" fill unoptimized className="object-cover object-top" sizes="30vw" />
                     <button
                       type="button"
@@ -443,7 +447,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
                     type="button"
                     key={`rm-${i}`}
                     onClick={() => setSourceOpen(true)}
-                    className="group flex aspect-[3/4] min-w-0 items-center justify-center rounded-2xl border border-dashed border-white/32 transition hover:border-white/60 hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
+                    className="group flex aspect-[3/4] min-w-0 items-center justify-center rounded-[4px] border border-dashed border-white/32 transition hover:border-white/60 hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
                     aria-label={`Upload photo ${i + 1}`}
                   >
                     <span className="px-1 text-center text-[8px] font-medium tracking-[0.18em] text-white/60 transition group-hover:text-white/85 sm:text-[9px]">
@@ -469,7 +473,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
         {hiddenInputs}
 
         <motion.div
-          className="rounded-3xl border border-white/10 bg-[oklch(0.13_0_0)] px-4 py-5 shadow-[0_24px_70px_-28px_rgba(0,0,0,0.85)] sm:px-6 sm:py-6"
+          className="rounded-[20px] border border-white/10 bg-[oklch(0.13_0_0)] px-4 py-5 shadow-[0_24px_70px_-28px_rgba(0,0,0,0.85)] sm:px-6 sm:py-6"
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           role="presentation"
@@ -524,7 +528,7 @@ function PhotoGuidanceModal({
     >
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Close instructions" onClick={onClose} />
       <motion.div
-        className="relative z-[1] w-full max-w-[430px] overflow-hidden rounded-[26px] bg-[oklch(0.965_0.006_75)] px-6 py-7 text-black shadow-[0_30px_100px_-28px_rgba(0,0,0,0.95)] sm:px-9 sm:py-9"
+        className="relative z-[1] w-full max-w-[430px] overflow-hidden rounded-[20px] bg-[oklch(0.965_0.006_75)] px-6 py-7 text-black shadow-[0_30px_100px_-28px_rgba(0,0,0,0.95)] sm:px-9 sm:py-9"
         initial={{ opacity: 0, y: 18, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
@@ -604,7 +608,7 @@ function PhotoSourceModal({
     >
       <button type="button" className="absolute inset-0 cursor-default" aria-label="Close photo options" onClick={onClose} />
       <motion.div
-        className="relative z-[1] w-full max-w-[430px] overflow-hidden rounded-[28px] border border-white/12 bg-[oklch(0.125_0_0)] p-4 shadow-[0_28px_90px_-25px_rgba(0,0,0,0.95)] sm:p-5"
+        className="relative z-[1] w-full max-w-[430px] overflow-hidden rounded-[20px] border border-white/12 bg-[oklch(0.125_0_0)] p-4 shadow-[0_28px_90px_-25px_rgba(0,0,0,0.95)] sm:p-5"
         initial={{ opacity: 0, y: 24, scale: 0.985 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
@@ -765,7 +769,7 @@ function CameraCaptureModal({
         aria-label="Close camera"
         onClick={onClose}
       />
-      <div className="relative z-[1] w-full max-w-md overflow-hidden rounded-2xl border border-white/12 bg-[oklch(0.12_0_0)] p-4 shadow-[0_32px_80px_-20px_rgba(0,0,0,0.95)] sm:p-5">
+      <div className="relative z-[1] w-full max-w-md overflow-hidden rounded-[20px] border border-white/12 bg-[oklch(0.12_0_0)] p-4 shadow-[0_32px_80px_-20px_rgba(0,0,0,0.95)] sm:p-5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 id="vora-camera-title" className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/90">
             Camera
@@ -789,10 +793,10 @@ function CameraCaptureModal({
 
         {phase === 'preview' && (
           <div className="space-y-4">
-            <div className="relative overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
+            <div className="relative mx-auto h-[min(62dvh,520px)] w-full overflow-hidden rounded-[4px] bg-black ring-1 ring-white/10">
               <video
                 ref={videoRef}
-                className={`max-h-[min(65dvh,520px)] w-full object-contain ${mirrored ? '-scale-x-100' : ''}`}
+                className={`absolute inset-0 h-full w-full object-cover ${mirrored ? '-scale-x-100' : ''}`}
                 muted
                 playsInline
                 autoPlay
@@ -944,7 +948,7 @@ function BodyFramingGuide({
           <stop offset="1" stopColor={liveColor} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <rect x="1" y="1" width="318" height="518" rx="18" fill="none" stroke={liveColor} strokeOpacity="0.25" />
+      <rect x="1" y="1" width="318" height="518" rx="4" fill="none" stroke={liveColor} strokeOpacity="0.25" />
       <path d="M18 52V25a10 10 0 0 1 10-10h28M264 15h28a10 10 0 0 1 10 10v27M302 468v27a10 10 0 0 1-10 10h-28M56 505H28a10 10 0 0 1-10-10v-27" fill="none" stroke={liveColor} strokeOpacity="0.75" strokeWidth="2" />
       <circle cx="160" cy="58" r="31" fill="none" stroke="currentColor" strokeOpacity="0.72" strokeWidth="1.5" strokeDasharray="5 6" />
       <line x1="160" y1="89" x2="160" y2="488" stroke="currentColor" strokeOpacity="0.55" strokeWidth="1.25" strokeDasharray="6 7" />
@@ -1034,7 +1038,7 @@ function SlotFlipCard({
         <button
           type="button"
           onClick={onAdd}
-          className="group absolute inset-0 flex items-center justify-center rounded-2xl border border-dashed border-white/34 bg-[oklch(0.11_0_0)] transition hover:border-white/60 hover:bg-[oklch(0.14_0_0)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
+          className="group absolute inset-0 flex items-center justify-center rounded-[4px] border border-dashed border-white/34 bg-[oklch(0.11_0_0)] transition hover:border-white/60 hover:bg-[oklch(0.14_0_0)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
           style={{
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
@@ -1049,7 +1053,7 @@ function SlotFlipCard({
 
         {/* BACK */}
         <div
-          className="absolute inset-0 overflow-hidden rounded-2xl bg-[oklch(0.1_0_0)] ring-1 ring-white/12 shadow-[0_14px_40px_-18px_rgba(0,0,0,0.75)]"
+          className="absolute inset-0 overflow-hidden rounded-[4px] bg-[oklch(0.1_0_0)] ring-1 ring-white/12 shadow-[0_14px_40px_-18px_rgba(0,0,0,0.75)]"
           style={{
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',

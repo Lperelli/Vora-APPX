@@ -150,7 +150,7 @@ export function ResultsScreen({ analysis, onRedo, onShowRecommendations }: Resul
       <div className={`${VORA_RESULTS_MAX} flex flex-col gap-[18px]`}>
         {/* ① Silhouette */}
         <motion.section
-          className="rounded-2xl border border-white/[0.06] bg-[oklch(0.12_0_0)] p-6 sm:p-7"
+          className="rounded-[20px] border border-white/[0.06] bg-[oklch(0.12_0_0)] p-6 sm:p-7"
           initial={prefersReducedMotion ? false : { opacity: 0, y: 14, filter: 'blur(12px)' }}
           animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.14 }}
@@ -173,7 +173,7 @@ export function ResultsScreen({ analysis, onRedo, onShowRecommendations }: Resul
 
         {/* ② What works for you */}
         <motion.section
-          className="rounded-2xl border border-white/[0.06] bg-[oklch(0.12_0_0)] p-6 sm:p-7"
+          className="rounded-[20px] border border-white/[0.06] bg-[oklch(0.12_0_0)] p-6 sm:p-7"
           initial={prefersReducedMotion ? false : { opacity: 0, y: 14, filter: 'blur(12px)' }}
           animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.22 }}
@@ -320,7 +320,7 @@ function CelebrityReferences({
   return (
     <motion.section
       ref={sectionRef}
-      className="rounded-2xl border border-white/[0.06] bg-[oklch(0.12_0_0)] p-6 sm:p-7"
+      className="rounded-[20px] border border-white/[0.06] bg-[oklch(0.12_0_0)] p-6 sm:p-7"
       initial={prefersReducedMotion ? false : { opacity: 0, y: 14, filter: 'blur(12px)' }}
       animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.32 }}
@@ -379,7 +379,7 @@ function CelebrityFlipCard({
 }) {
   if (prefersReducedMotion) {
     return (
-      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
+      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-[4px] bg-black ring-1 ring-white/10">
         <Image
           src={asset(imageSrc)}
           alt={name}
@@ -408,7 +408,7 @@ function CelebrityFlipCard({
       >
         {/* FRONT — dashed BODY N placeholder */}
         <div
-          className="absolute inset-0 flex items-center justify-center rounded-xl border border-dashed border-white/30 bg-[oklch(0.11_0_0)]"
+          className="absolute inset-0 flex items-center justify-center rounded-[4px] border border-dashed border-white/30 bg-[oklch(0.11_0_0)]"
           style={{
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
@@ -423,7 +423,7 @@ function CelebrityFlipCard({
 
         {/* BACK — celebrity portrait */}
         <div
-          className="absolute inset-0 overflow-hidden rounded-xl bg-black ring-1 ring-white/10 shadow-[0_14px_40px_-18px_rgba(0,0,0,0.75)]"
+          className="absolute inset-0 overflow-hidden rounded-[4px] bg-black ring-1 ring-white/10 shadow-[0_14px_40px_-18px_rgba(0,0,0,0.75)]"
           style={{
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
