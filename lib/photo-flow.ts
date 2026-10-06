@@ -1,3 +1,4 @@
+import { poseQualityIssue } from './pose-quality'
 import type { BodyWidths } from '@/lib/body-classifier'
 import { PHOTO_VISIBILITY, THRESHOLDS } from '@/lib/body-type-config'
 import { asset } from '@/lib/base-path'
@@ -29,6 +30,9 @@ const L_HIP = 23
 const R_HIP = 24
 
 export type PhotoFailReason =
+  | 'not_front_facing'
+  | 'arms_obscured'
+  | 'posture'
   | 'no_body'
   | 'multiple_bodies'
   | 'not_full_body'
@@ -144,6 +148,9 @@ export async function measureFromImage(file: File | Blob): Promise<PhotoMeasureR
     if (!nose || !Number.isFinite(nose.y) || (nose.visibility ?? 0) < 0.4 || nose.y < 0.01 || ankles.some(point => !point || !Number.isFinite(point.y) || point.y > 0.99 || (point.visibility ?? 0) < 0.35)) {
       return { ok: false, widths: null, visibility, reason: 'not_full_body' }
     }
+
+    const qualityIssue = poseQualityIssue(lm)
+    if (qualityIssue) return { ok: false, widths: null, visibility, reason: qualityIssue }
 
     const mask = result.segmentationMasks?.[0]
     if (!mask) return { ok: false, widths: null, visibility, reason: 'silhouette_unreadable' }

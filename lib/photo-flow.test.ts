@@ -19,6 +19,9 @@ function fixture() {
   points[0].y = 0.08
   points[11].y = points[12].y = 0.25
   points[23].y = points[24].y = 0.55
+  points[11].x = points[23].x = 0.4
+  points[12].x = points[24].x = 0.6
+  points[15].x = 0.25; points[16].x = 0.75
   points[27].y = points[28].y = 0.92
   const mask = { width: 100, height: 100, close: vi.fn(), getAsFloat32Array: vi.fn(() => {
     const values = new Float32Array(10000)
@@ -110,4 +113,19 @@ describe('single-photo analysis resources', () => {
     expect(data.mask.close).toHaveBeenCalledOnce()
     expect(secondMask.close).toHaveBeenCalledOnce()
   })
+})
+
+describe('photo pose quality',()=>{
+ it('rejects a marked side view before interpreting its silhouette',async()=>{
+  const data=fixture();data.points[12].z=0.5;data.points[24].z=0.5;model.detect.mockReturnValue(data.result)
+  const {measureFromImage}=await import('./photo-flow')
+  expect((await measureFromImage(new Blob())).reason).toBe('not_front_facing')
+  expect(data.mask.close).toHaveBeenCalledOnce()
+ })
+ it('rejects arms crossing the waist and still releases the image',async()=>{
+  const data=fixture();data.points[15].x=0.5;model.detect.mockReturnValue(data.result)
+  const {measureFromImage}=await import('./photo-flow')
+  expect((await measureFromImage(new Blob())).reason).toBe('arms_obscured')
+  expect(data.bitmap.close).toHaveBeenCalledOnce()
+ })
 })
