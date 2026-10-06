@@ -3,8 +3,7 @@ import { z } from 'zod'
 export const BODY_TYPE_IDS = [
   'hourglass',
   'rectangle',
-  'pear',
-  'apple',
+  'triangle',
   'inverted-triangle',
 ] as const
 
@@ -109,7 +108,7 @@ export const BODY_TYPE_PRESETS: Record<
     ],
   },
   rectangle: {
-    bodyTypeLabel: 'Rectangle',
+    bodyTypeLabel: 'Square',
     silhouetteDescription:
       'Your shoulders, waist, and hips sit in a fairly straight line, giving you an athletic, streamlined look. You can add curve with cuts, belts, and strategic volume where you want emphasis.',
     whatWorksForYou: [
@@ -153,8 +152,8 @@ export const BODY_TYPE_PRESETS: Record<
       { category: 'Accessories', tip: 'Statement belts and scarves draw the eye to the waist.' },
     ],
   },
-  pear: {
-    bodyTypeLabel: 'Pear',
+  triangle: {
+    bodyTypeLabel: 'Triangle',
     silhouetteDescription:
       'Your hips and thighs carry more volume than your shoulders, with a comparatively smaller upper body. Balance and elongating the shoulder line often flatter this shape beautifully.',
     whatWorksForYou: [
@@ -181,7 +180,7 @@ export const BODY_TYPE_PRESETS: Record<
       },
       {
         name: 'America Ferrera',
-        reason: 'Pear-leaning proportions in tailored looks',
+        reason: 'Triangle proportions in tailored looks',
         imageSrc: '/celebrities/america-ferrera.webp',
       },
       {
@@ -196,51 +195,6 @@ export const BODY_TYPE_PRESETS: Record<
       { category: 'Dresses', tip: 'Empire and fit-and-flare lines skim without clinging.' },
       { category: 'Outerwear', tip: 'Hip-length jackets with structured shoulders harmonize proportions.' },
       { category: 'Accessories', tip: 'Statement earrings and necklaces keep focus near the face.' },
-    ],
-  },
-  apple: {
-    bodyTypeLabel: 'Apple',
-    silhouetteDescription:
-      'You carry more fullness through the midsection, often with great legs and a full bust. Flowing lines that skim the torso and open necklines usually feel comfortable and polished.',
-    whatWorksForYou: [
-      'Empire waists and tunics that float over the midsection',
-      'V-necks and vertical seams that elongate',
-      'Structured shoulders with a relaxed torso',
-      'Straight or bootcut pants to balance the frame',
-    ],
-    whatToAvoid: [
-      'Very tight clingy knits around the midsection',
-      'Wide belts sitting exactly at the fullest point',
-      'Double-breasted bulk with no vertical break',
-    ],
-    celebrities: [
-      {
-        name: 'Drew Barrymore',
-        reason: 'Soft midsection often styled with flowing lines',
-        imageSrc: '/celebrities/drew-barrymore.webp',
-      },
-      {
-        name: 'Melissa McCarthy',
-        reason: 'Great example of apple-friendly tailoring on screen',
-        imageSrc: '/celebrities/melissa-mccarthy.webp',
-      },
-      {
-        name: 'Queen Latifah',
-        reason: 'Strong vertical styling and empire silhouettes',
-        imageSrc: '/celebrities/queen-latifah.webp',
-      },
-      {
-        name: 'Oprah Winfrey',
-        reason: 'Classic apple proportions in polished tailoring',
-        imageSrc: '/celebrities/oprah-winfrey.webp',
-      },
-    ],
-    styleRecommendations: [
-      { category: 'Tops', tip: 'Wrap and surplice tops create a flattering diagonal line.' },
-      { category: 'Bottoms', tip: 'Straight-leg trousers balance a softer torso line.' },
-      { category: 'Dresses', tip: 'Shift and trapeze dresses skim without pulling across the waist.' },
-      { category: 'Outerwear', tip: 'Open-front longline cardigans add length without cling.' },
-      { category: 'Accessories', tip: 'Long pendant necklaces add a vertical focal point.' },
     ],
   },
   'inverted-triangle': {
@@ -319,7 +273,7 @@ export const STYLE_EDITORIAL: Record<BodyTypeId, { intro: string; products: Styl
       { brand: 'Zara Pre-Owned', name: 'Belted Wool Blazer', price: 'View current price', image: '/products/zara-belted-wool-blazer.webp', stylingNote: 'The belt adds instant structure and creates waist definition.', shopUrl: 'https://www.zara.com/us/en/preowned-resell/product-detail/1713554' },
     ],
   },
-  pear: {
+  triangle: {
     intro:
       'The play here is balance — draw the eye up and let the lower half stay simple and fluid. Think detailed, brighter tops, structured shoulders, and bottoms that skim rather than cling.',
     products: [
@@ -328,17 +282,6 @@ export const STYLE_EDITORIAL: Record<BodyTypeId, { intro: string; products: Styl
       { brand: 'Zara', name: 'Striped Pleated Balloon Pants', price: 'View current price', image: '/products/zara-striped-pleated-balloon-pants.webp', stylingNote: 'Fluid volume falls from a defined waist and moves away from the hip.', shopUrl: 'https://www.zara.com/us/en/striped-pleated-balloon-pants-p01255527.html' },
       { brand: 'Abercrombie & Fitch', name: 'A&F Sloane Tailored Wide-Leg Pant', price: 'View current price', image: '/products/abercrombie-sloane-wide-leg-pant.webp', stylingNote: 'A full-length tailored leg creates one long, balanced line.', shopUrl: 'https://www.abercrombie.com/shop/us/p/tailored-wide-leg-pants-51625331' },
       { brand: 'H&M', name: 'Wrap Dress', price: 'View current price', image: '/products/hm-wrap-dress.webp', stylingNote: 'The wrap defines the waist and the skirt releases cleanly over the hips.', shopUrl: 'https://www2.hm.com/en_us/productpage.1285149003.html' },
-    ],
-  },
-  apple: {
-    intro:
-      'Flowing, vertical lines are your best friend — pieces that skim the midsection and open up the neckline feel effortless. These picks elongate and float instead of cling.',
-    products: [
-      { brand: 'H&M', name: 'Wrap Dress', price: 'View current price', image: '/products/hm-wrap-dress.webp', stylingNote: 'A V neckline and diagonal wrap create a long, open line.', shopUrl: 'https://www2.hm.com/en_us/productpage.1285149003.html' },
-      { brand: 'H&M', name: 'Relaxed Button-Down Shirt', price: 'View current price', image: '/products/hm-relaxed-button-down-shirt.webp', stylingNote: 'Wear it slightly open for an easy vertical break through the torso.', shopUrl: 'https://www2.hm.com/en_us/productpage.1344514001.html' },
-      { brand: 'Abercrombie & Fitch', name: 'A&F Sloane Tailored Wide-Leg Pant', price: 'View current price', image: '/products/abercrombie-sloane-wide-leg-pant.webp', stylingNote: 'The clean leg balances the torso with structure below.', shopUrl: 'https://www.abercrombie.com/shop/us/p/tailored-wide-leg-pants-51625331' },
-      { brand: 'Zara', name: 'ZW Collection Curved Straight Jeans', price: 'View current price', image: '/products/zara-curved-straight-jeans.webp', stylingNote: 'A straighter leg keeps the silhouette clean and uninterrupted.', shopUrl: 'https://www.zara.com/us/en/zw-collection-curved-straight-mid-rise-jeans-p09632273.html' },
-      { brand: 'Zara Pre-Owned', name: 'Belted Wool Blazer', price: 'View current price', image: '/products/zara-belted-wool-blazer.webp', stylingNote: 'Wear it open for vertical length or softly tied for definition.', shopUrl: 'https://www.zara.com/us/en/preowned-resell/product-detail/1713554' },
     ],
   },
   'inverted-triangle': {
