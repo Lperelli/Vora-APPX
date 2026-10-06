@@ -30,7 +30,8 @@ export default function PrivacyPage() {
           </section>
           <section>
             <h2 className="mb-3 text-base font-semibold text-foreground">Measurements and email</h2>
-            <p>The MVP uses the measurements you enter to calculate your styling profile in your browser. Its email step validates your address locally to unlock your results; this version does not send that address to VORA or send result emails.</p>
+            <p>The MVP uses the measurements you enter to calculate your styling profile in your browser. When email registration is unavailable, you can view your results without providing an email. When the email form is available and you submit it, VORA saves your email, registration date, app source and a request ID in a private Google Sheet, using Google Apps Script. These records let the VORA team keep its list of leads. We do not send result emails.</p>
+            <p className="mt-3">Your photos, measurements and body analysis are not included in this registration. Only the VORA team and authorised collaborators can access the sheet. You can contact VORA to request removal of your email.</p>
           </section>
           <section>
             <h2 className="mb-3 text-base font-semibold text-foreground">Visits and technical services</h2>
