@@ -37,23 +37,11 @@ function RectangleSvg() {
   )
 }
 
-function PearSvg() {
+function TriangleSvg() {
   return (
     <svg viewBox="0 0 60 140" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="h-full w-full">
       <path
         d="M18 8 Q30 6 42 8 L40 52 Q30 66 30 76 Q30 86 46 106 L50 134 Q30 138 10 134 L14 106 Q30 86 30 76 Q30 66 20 52 Z"
-        className="fill-foreground/[0.06] stroke-foreground/65"
-      />
-      <line x1="30" y1="4" x2="30" y2="138" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" className="text-foreground/25" />
-    </svg>
-  )
-}
-
-function AppleSvg() {
-  return (
-    <svg viewBox="0 0 60 140" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="h-full w-full">
-      <path
-        d="M16 8 Q30 6 44 8 L50 62 Q44 86 30 84 Q16 86 10 62 Z M18 88 Q30 84 30 84 Q30 84 42 88 L44 134 Q30 136 16 134 Z"
         className="fill-foreground/[0.06] stroke-foreground/65"
       />
       <line x1="30" y1="4" x2="30" y2="138" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" className="text-foreground/25" />
@@ -76,14 +64,13 @@ function InvertedTriangleSvg() {
 const SILHOUETTES: Record<BodyTypeId, ReactNode> = {
   hourglass: <HourglassSvg />,
   rectangle: <RectangleSvg />,
-  pear: <PearSvg />,
-  apple: <AppleSvg />,
+  triangle: <TriangleSvg />,
   'inverted-triangle': <InvertedTriangleSvg />,
 }
 
 function silhouetteForBodyType(slug: string) {
   const key = slug.toLowerCase().trim().replace(/_/g, '-') as BodyTypeId
-  const valid: BodyTypeId[] = ['hourglass', 'rectangle', 'pear', 'apple', 'inverted-triangle']
+  const valid: BodyTypeId[] = ['hourglass', 'rectangle', 'triangle', 'inverted-triangle']
   const id = valid.includes(key) ? key : 'rectangle'
   return SILHOUETTES[id]
 }
