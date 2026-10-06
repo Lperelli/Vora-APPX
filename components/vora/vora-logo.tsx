@@ -17,9 +17,11 @@ const LOGO_DARK_SRC = '/brand/vora-logo@2x.png'
 export function VoraLogo({
   className,
   priority = false,
+  tone = 'dark',
 }: {
   className?: string
   priority?: boolean
+  tone?: 'dark' | 'light'
 }) {
   const [src, setSrc] = useState(LOGO_WHITE_SRC)
   const isFallback = src === LOGO_DARK_SRC
@@ -38,7 +40,7 @@ export function VoraLogo({
       onError={onError}
       className={cn(
         'h-6 w-auto max-w-[min(100%,220px)] select-none object-contain object-center',
-        isFallback && 'brightness-0 invert',
+        tone === 'light' ? 'brightness-0' : isFallback && 'brightness-0 invert',
         className
       )}
       sizes="(max-width: 768px) 160px, 220px"

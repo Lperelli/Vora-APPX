@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 
-type Variant = 'onDark' | 'onTheme'
+type Variant = 'onDark' | 'onTheme' | 'onLight'
 
 interface ScreenReturnButtonProps {
   onClick: () => void
@@ -17,7 +17,7 @@ export function ScreenReturnButton({ onClick, variant = 'onTheme', className = '
   const styles =
     variant === 'onDark'
       ? 'text-white/50 hover:text-white active:text-white/90'
-      : 'text-muted-foreground hover:text-foreground active:text-foreground/80'
+      : variant === 'onLight' ? 'text-[#62685b] hover:text-[#232720]' : 'text-muted-foreground hover:text-foreground active:text-foreground/80'
 
   return (
     <button

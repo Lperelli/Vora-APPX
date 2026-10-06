@@ -1,92 +1,103 @@
 'use client'
-
 import Link from 'next/link'
-import { Clock, Upload } from 'lucide-react'
-import { motion, useReducedMotion, type Variants } from 'framer-motion'
+import { ArrowUpRight, Camera, Images, Ruler } from 'lucide-react'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
-import { VORA_FLOW_MAX } from './vora-layout'
 
-interface IntroScreenProps {
+export function IntroScreen({
+  onBack,
+  onUploadPhotos,
+  onTakePhoto,
+  onEnterMeasurements,
+}: {
   onBack: () => void
   onUploadPhotos: () => void
+  onTakePhoto: () => void
   onEnterMeasurements: () => void
-}
-
-export function IntroScreen({ onBack, onUploadPhotos, onEnterMeasurements }: IntroScreenProps) {
-  const prefersReducedMotion = useReducedMotion()
-
-  const container: Variants = {
-    hidden: {},
-    show: prefersReducedMotion
-      ? {}
-      : { transition: { staggerChildren: 0.08, delayChildren: 0.14 } },
-  }
-  const item: Variants = {
-    hidden: prefersReducedMotion ? { opacity: 1, y: 0, filter: 'blur(0px)' } : { opacity: 0, y: 14, filter: 'blur(14px)' },
-    show: prefersReducedMotion
-      ? { opacity: 1, y: 0, filter: 'blur(0px)' }
-      : { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } },
-  }
-
+}) {
+  const choices = [
+    {
+      title: 'Take a photo',
+      detail: 'A guided camera. One new full-length photo.',
+      note: '01 PHOTO',
+      icon: Camera,
+      action: onTakePhoto,
+    },
+    {
+      title: 'Choose from your library',
+      detail: 'Three photos you already have, compared together.',
+      note: '03 PHOTOS',
+      icon: Images,
+      action: onUploadPhotos,
+    },
+    {
+      title: 'Enter measurements',
+      detail: 'Use your bust, waist and hip measurements.',
+      note: 'NO CAMERA',
+      icon: Ruler,
+      action: onEnterMeasurements,
+    },
+  ]
   return (
-    <motion.div
-      className="flex min-h-[100dvh] flex-col items-stretch justify-between bg-background px-4 pb-[max(3rem,env(safe-area-inset-bottom))] pt-0 sm:px-6"
-      variants={container}
-      initial={prefersReducedMotion ? false : 'hidden'}
-      animate={prefersReducedMotion ? undefined : 'show'}
-    >
-      <motion.div variants={item} className="w-full shrink-0">
-        <VoraScreenHeader onReturn={onBack} variant="onTheme" center={<VoraLogo />} />
-      </motion.div>
-
-      <div
-        className={`flex-1 flex flex-col items-center justify-center text-center ${VORA_FLOW_MAX} gap-8 sm:gap-10 px-3 sm:px-4 min-h-0 py-6`}
-      >
-        <motion.div className="w-full max-w-2xl lg:max-w-3xl mx-auto space-y-5 sm:space-y-6" variants={item}>
-          <h2 className="text-lg sm:text-xl md:text-2xl font-semibold tracking-[0.12em] uppercase text-foreground">
-            We know online fitting is a struggle.
-          </h2>
-          <p className="text-sm sm:text-base text-foreground/70 leading-relaxed">
-            {"That's why we make the science of styling available to everyone. Try VORA and get personalized outfits that will flatter you the most according to your body type."}
-          </p>
-          <div className="flex items-center justify-center gap-2 text-foreground/60">
-            <Clock className="w-4 h-4" />
-            <span className="text-sm">3 min</span>
-          </div>
-        </motion.div>
-
-        <motion.div className="mx-auto flex w-full max-w-md flex-col gap-4 px-1 lg:max-w-lg" variants={item}>
-          <motion.button
-            onClick={onUploadPhotos}
-            className="flex w-full min-h-[48px] items-center justify-center gap-3 rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-5 py-4 text-xs uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)] sm:px-6"
-            whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
-            whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
-          >
-            <Upload className="w-4 h-4" />
-            Upload Photos
-          </motion.button>
-          <p className="text-xs text-muted-foreground text-center tracking-widest uppercase">or</p>
-          <motion.button
-            onClick={onEnterMeasurements}
-            className="flex w-full min-h-[48px] items-center justify-center gap-3 rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-5 py-4 text-xs uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)] sm:px-6"
-            whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
-            whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
-          >
-            Enter Measurements
-          </motion.button>
-        </motion.div>
-      </div>
-
-      <motion.p
-        className="text-[10px] tracking-[0.25em] text-muted-foreground uppercase text-center px-4 shrink-0 pb-2"
-        variants={item}
-      >
-        Photos processed on your device / No uploads or training
-        <Link href="/privacy" className="mt-3 block min-h-8 normal-case tracking-normal underline underline-offset-4 hover:text-foreground focus-visible:outline focus-visible:outline-offset-4">
-          How we handle your information
+    <div className="flex min-h-dvh flex-col bg-[#10120f] text-[#f0eee7]">
+      <VoraScreenHeader
+        onReturn={onBack}
+        variant="onDark"
+        center={<VoraLogo />}
+      />
+      <section className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center px-6 py-10 sm:py-14">
+        <p className="mb-5 text-[10px] uppercase tracking-[0.3em] text-[#a4ad96]">
+          A personal approach to getting dressed
+        </p>
+        <h1 className="max-w-2xl font-serif text-5xl leading-[1.03] tracking-[-0.03em] sm:text-7xl">
+          Style starts
+          <br />
+          with <em>understanding you.</em>
+        </h1>
+        <p className="mb-8 mt-5 max-w-md text-sm leading-7 text-[#a1a699]">
+          Discover the shapes and outfits that work with your proportions.
+          Choose how you’d like to begin.
+        </p>
+        <div className="divide-y divide-white/10 border-y border-white/10">
+          {choices.map(({ title, detail, note, icon: Icon, action }) => (
+            <button
+              key={title}
+              onClick={action}
+              className="group flex min-h-[98px] w-full items-center gap-4 py-5 text-left transition hover:bg-white/[.035] sm:gap-6 sm:px-3"
+            >
+              <Icon
+                className="shrink-0 text-[#bcc6ad]"
+                size={23}
+                strokeWidth={1.3}
+              />
+              <span className="flex-1">
+                <span className="block text-[19px] font-medium tracking-tight sm:text-xl">
+                  {title}
+                </span>
+                <span className="mt-1 block text-[11px] leading-5 text-[#959e8b] sm:text-xs">
+                  {detail}
+                </span>
+              </span>
+              <span className="hidden text-[9px] tracking-[0.14em] text-[#9caa8c] sm:block">
+                {note}
+              </span>
+              <ArrowUpRight
+                size={18}
+                className="text-[#b5c4a2] transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+              />
+            </button>
+          ))}
+        </div>
+      </section>
+      <footer className="px-6 pb-8 text-center text-[10px] leading-6 text-[#839177]">
+        Photos are processed on your device.
+        <Link
+          href="/privacy"
+          className="ml-2 inline-block min-h-8 underline underline-offset-4"
+        >
+          Your privacy
         </Link>
-      </motion.p>
-    </motion.div>
+      </footer>
+    </div>
   )
 }

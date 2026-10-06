@@ -16,7 +16,7 @@ export function usePhotoDialog(onClose: () => void) {
       previousOverflow = document.body.style.overflow
       document.body.style.overflow = 'hidden'
     }
-    const focusable = () => Array.from(root.current?.querySelectorAll<HTMLElement>('button:not([disabled]):not([tabindex="-1"]), a[href], input:not([disabled]), [tabindex="0"]') || [])
+    const focusable = () => Array.from(root.current?.querySelectorAll<HTMLElement>('button:not([disabled]):not([tabindex="-1"]), a[href], input:not([disabled]), select:not([disabled]), [tabindex="0"]') || [])
     const animation = requestAnimationFrame(() => focusable()[0]?.focus())
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); close.current(); return }

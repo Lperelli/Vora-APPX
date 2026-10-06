@@ -3,12 +3,12 @@ export type CameraIssue = 'permission' | 'missing' | 'busy' | 'timeout' | 'previ
 
 export const CAMERA_MESSAGES: Record<CameraIssue, string> = {
   permission: 'Camera access is blocked. Allow camera access in your browser settings, then try again.',
-  missing: 'No camera was found. Connect a camera or choose a photo from your library.',
+  missing: 'No camera was found. Connect a camera or choose three photos from your library.',
   busy: 'The camera is unavailable or in use by another app. Close that app, then try again.',
   timeout: 'The camera did not respond. Check browser camera access, then try again or use your photo library.',
   preview: 'The camera opened but no live video arrived. Try again or use your photo library.',
   inactive: 'The camera was paused when you left this page. Restart it when you are ready.',
-  capture: 'We couldn’t save this photo. Please try again or choose one from your library.',
+  capture: 'We couldn’t save this photo. Please try again or use your photo library.',
   unsupported: 'Live camera is unavailable in this browser. Use your photo library or enter your measurements.',
 }
 

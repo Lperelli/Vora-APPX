@@ -1,119 +1,200 @@
 'use client'
-
-import Link from 'next/link'
+import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { ArrowRight, Camera, ImagePlus, Plus, X, Ruler } from 'lucide-react'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
-import { PhotoUploadFlip, type PhotoSlotsState } from './photo-upload-flip'
 import { PhotoGuidanceList } from './photo-guidance'
-import { VORA_FLOW_MAX } from './vora-layout'
 
-interface PhotoUploadScreenProps {
+export function PhotoUploadScreen({
+  files,
+  onFilesChange,
+  onSubmit,
+  onBack,
+  onTakePhoto,
+  onUseMeasurements,
+}: {
+  files: File[]
+  onFilesChange: (files: File[]) => void
   onSubmit: (files: File[]) => void
   onBack: () => void
+  onTakePhoto: () => void
   onUseMeasurements: () => void
-}
-
-export function PhotoUploadScreen({ onSubmit, onBack, onUseMeasurements }: PhotoUploadScreenProps) {
-  const [slots, setSlots] = useState<PhotoSlotsState>(() => [null, null, null])
-  const prefersReducedMotion = useReducedMotion()
-  const slotsRef = useRef(slots)
-  slotsRef.current = slots
-
-  const photoCount = slots.filter((s) => s !== null).length
-  const hasPhotos = photoCount > 0
-  const hasMinimumPhotos = photoCount >= 1
-
+}) {
+  const input = useRef<HTMLInputElement>(null)
+  const [previews, setPreviews] = useState<string[]>([])
+  const [message, setMessage] = useState('')
   useEffect(() => {
-    return () => {
-      slotsRef.current.forEach((p) => {
-        if (p) URL.revokeObjectURL(p.preview)
-      })
-    }
-  }, [])
-
-  const handleSubmit = () => {
-    const files = slots.filter((s): s is NonNullable<typeof s> => s !== null).map((s) => s.file)
-    if (files.length < 1) return
-    onSubmit(files)
+    const urls = files.map((file) => URL.createObjectURL(file))
+    setPreviews(urls)
+    return () => urls.forEach((url) => URL.revokeObjectURL(url))
+  }, [files])
+  const addFiles = (picked: File[]) => {
+    const images = picked.filter((file) => file.type.startsWith('image/'))
+    const next = [...files]
+    for (const file of images)
+      if (
+        !next.some(
+          (other) =>
+            other.name === file.name &&
+            other.size === file.size &&
+            other.lastModified === file.lastModified
+        )
+      )
+        next.push(file)
+    setMessage(
+      images.length < picked.length
+        ? 'Choose image files.'
+        : next.length > 3
+          ? 'Three photos are enough. Only the first three were added.'
+          : next.length === files.length
+            ? 'That photo is already selected. Choose a different one.'
+            : ''
+    )
+    onFilesChange(next.slice(0, 3))
   }
-
-  const bottomPad = hasPhotos
-    ? 'pb-[max(7.5rem,calc(env(safe-area-inset-bottom)+4.5rem))]'
-    : 'pb-[max(2rem,env(safe-area-inset-bottom))]'
-
   return (
-    <motion.div
-      className={`flex min-h-[100dvh] flex-col items-stretch bg-background px-4 pt-0 sm:px-6 ${bottomPad}`}
-      initial={prefersReducedMotion ? false : { opacity: 0 }}
-      animate={prefersReducedMotion ? undefined : { opacity: 1 }}
-      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-    >
-      <motion.div
-        initial={prefersReducedMotion ? false : { opacity: 0, y: -6 }}
-        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <VoraScreenHeader onReturn={onBack} variant="onTheme" center={<VoraLogo />} />
-      </motion.div>
-
-      <motion.div
-        className="mb-6 w-full sm:mb-8"
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 12, filter: 'blur(12px)' }}
-        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-        transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <PhotoUploadFlip slots={slots} onSlotsChange={setSlots} onUseMeasurements={onUseMeasurements} />
-      </motion.div>
-
-      {hasPhotos && (
-        <>
-          <motion.div
-            className={`${VORA_FLOW_MAX} mb-8 px-2 text-center sm:mb-10`}
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-            animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: prefersReducedMotion ? 0 : 0.12 }}
+    <div className="min-h-dvh bg-[#f3f0e9] text-[#232720]">
+      <VoraScreenHeader
+        onReturn={onBack}
+        variant="onLight"
+        center={<VoraLogo tone="light" />}
+      />
+      <section className="mx-auto max-w-5xl px-5 py-7 sm:px-8 sm:py-12">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
+          <div>
+            <p className="mb-3 text-[10px] uppercase tracking-[0.26em] text-[#6b735f]">
+              From your library / 03 photos
+            </p>
+            <h1 className="font-serif text-4xl tracking-[-0.025em] sm:text-5xl">
+              Your photos. <em>Your perspective.</em>
+            </h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-[#646b5d]">
+              Choose three different, front-facing, full-length photos of
+              yourself. We’ll compare your visible proportions across them.
+            </p>
+          </div>
+          <span
+            className="font-serif text-3xl text-[#747e68]"
+            aria-live="polite"
           >
-            <div className="mx-auto max-w-xl space-y-5 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5 text-left sm:p-6">
-              <p className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">Final Review</p>
-              <PhotoGuidanceList />
-              <p className="border-t border-white/[0.08] pt-4 text-[11px] leading-relaxed text-foreground/50">
-                {hasMinimumPhotos
-                  ? `${photoCount === 1 ? '1 photo is' : `${photoCount} photos are`} ready. Extra photos are optional.`
-                  : 'Add one clear full-length photo to continue.'}
-              </p>
-            </div>
-          </motion.div>
-
-          <motion.button
-            onClick={handleSubmit}
-            disabled={!hasMinimumPhotos}
-            className="mx-auto min-h-[48px] w-full max-w-md rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-4 py-4 text-[11px] uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-[oklch(0.20_0_0)] disabled:cursor-not-allowed disabled:opacity-35 sm:px-6 sm:text-xs sm:tracking-[0.25em]"
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
-            animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: prefersReducedMotion ? 0 : 0.18 }}
-            whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
-            whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
-          >
-            Next
-          </motion.button>
-        </>
-      )}
-
-      <footer className="mt-auto pt-10">
-        <motion.p
-          className="text-[10px] tracking-[0.25em] text-muted-foreground uppercase text-center"
-          initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
-          animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            {files.length}
+            <span className="text-[#b2b9a7]"> / 3</span>
+          </span>
+        </div>
+        <input
+          ref={input}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(event) => {
+            addFiles(Array.from(event.target.files || []))
+            event.target.value = ''
+          }}
+        />
+        <div
+          className="grid grid-cols-3 gap-2 sm:gap-5"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault()
+            addFiles(Array.from(event.dataTransfer.files))
+          }}
         >
-          Your photos are processed on your device. VORA does not upload them to its servers or use them to train an algorithm.
-          <Link href="/privacy" className="mt-3 block min-h-8 normal-case tracking-normal underline underline-offset-4 hover:text-foreground focus-visible:outline focus-visible:outline-offset-4">
-            How we handle your information
-          </Link>
-        </motion.p>
-      </footer>
-    </motion.div>
+          {[0, 1, 2].map((index) => (
+            <div
+              key={index}
+              className="relative aspect-[3/4] overflow-hidden rounded-t-[50px] border border-[#d6dccd] bg-[#e8ecdf] sm:rounded-t-[110px]"
+            >
+              {files[index] && previews[index] ? (
+                <>
+                  <Image
+                    src={previews[index]}
+                    alt={`Selected library photo ${index + 1}`}
+                    fill
+                    unoptimized
+                    className="object-contain"
+                    sizes="(max-width:640px) 30vw, 300px"
+                  />
+                  <button
+                    onClick={() =>
+                      onFilesChange(files.filter((_, i) => i !== index))
+                    }
+                    aria-label={`Remove photo ${index + 1}`}
+                    className="absolute bottom-3 right-2 flex h-11 w-11 items-center justify-center rounded-full bg-[#20291f]/85 text-white"
+                  >
+                    <X size={16} />
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => input.current?.click()}
+                  aria-label={`Add library photo ${index + 1}`}
+                  className="flex h-full w-full flex-col items-center justify-center gap-3 transition hover:bg-[#dde4d1]"
+                >
+                  <Plus size={22} strokeWidth={1} />
+                  <span className="text-[9px] uppercase tracking-[0.16em] text-[#6c775d]">
+                    Photo 0{index + 1}
+                  </span>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        {message && (
+          <p role="status" className="mt-4 text-sm text-[#86533b]">
+            {message}
+          </p>
+        )}
+        <div className="mt-8 grid gap-8 sm:grid-cols-2 sm:gap-14">
+          <PhotoGuidanceList tone="light" />
+          <div>
+            {files.length < 3 ? (
+              <button
+                onClick={() => input.current?.click()}
+                className="flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-[#26352b] px-6 text-xs text-white"
+              >
+                <ImagePlus size={17} />
+                {files.length
+                  ? `Add ${3 - files.length} more ${files.length === 2 ? 'photo' : 'photos'}`
+                  : 'Choose 3 photos'}
+              </button>
+            ) : (
+              <button
+                onClick={() => onSubmit(files)}
+                className="flex min-h-14 w-full items-center justify-between rounded-full bg-[#26352b] px-6 text-xs text-white"
+              >
+                Find my style profile
+                <ArrowRight size={17} />
+              </button>
+            )}
+            <p className="mt-3 text-center text-[11px] leading-5 text-[#747d67]">
+              {files.length < 3
+                ? 'Add all three photos to continue.'
+                : 'Three photos selected. Ready when you are.'}
+            </p>
+          </div>
+        </div>
+        <div className="mt-9 flex flex-wrap gap-x-7 border-t border-[#d6dccd] pt-4 text-xs text-[#626c56]">
+          <button
+            onClick={onTakePhoto}
+            className="flex min-h-11 items-center gap-2"
+          >
+            <Camera size={15} />
+            Take 1 new photo instead
+          </button>
+          <button
+            onClick={onUseMeasurements}
+            className="flex min-h-11 items-center gap-2"
+          >
+            <Ruler size={15} />
+            Enter measurements
+          </button>
+        </div>
+        <p className="mt-4 text-[10px] text-[#78816e]">
+          Your photos stay on your device.
+        </p>
+      </section>
+    </div>
   )
 }

@@ -6,6 +6,10 @@ import { VoraScreenHeader } from './screen-return-button'
 import { VORA_FLOW_MAX } from './vora-layout'
 
 export type PhotoIssue =
+  | 'not_front_facing'
+  | 'arms_obscured'
+  | 'posture'
+  | 'inconsistent_photos'
   | 'no_body'
   | 'multiple_bodies'
   | 'not_full_body'
@@ -15,6 +19,10 @@ export type PhotoIssue =
   | 'low_confidence'
 
 const MESSAGES: Record<PhotoIssue, string> = {
+  not_front_facing: 'Turn towards the camera. A side view changes the proportions we can see.',
+  arms_obscured: 'Relax your arms slightly away from your waist so we can see your torso clearly.',
+  posture: 'Stand upright and face forward with your weight balanced on both feet.',
+  inconsistent_photos: 'We couldn’t find two consistent, usable views in these photos. Try three clear front-facing photos, or use your measurements.',
   no_body: "We couldn't find a full body in that photo. Try a clear, front-facing, head-to-toe shot.",
   multiple_bodies: 'There is more than one person in this photo. Take a photo with only you in the frame.',
   not_full_body: 'We need your whole body in frame, head to toe. Step back and try again.',
@@ -22,7 +30,7 @@ const MESSAGES: Record<PhotoIssue, string> = {
   silhouette_unreadable: "We couldn't read your silhouette. Fitted clothing against a plain background works best.",
   load_failed: "Something went wrong reading the photo. Let's try again.",
   low_confidence:
-    "We couldn't be confident enough to be exact. For the most accurate result, the photo needs to be front-facing, full-body, with fitted clothing — or you can enter measurements.",
+    "We couldn’t find a consistent style profile from this photo. For a clearer view, the photo needs to be front-facing, full-body, with fitted clothing — or you can enter measurements.",
 }
 
 interface PhotoFallbackScreenProps {
@@ -71,7 +79,7 @@ export function PhotoFallbackScreen({ issue, onRetryPhoto, onEnterMeasurements, 
               whileHover={prefersReducedMotion ? undefined : { scale: 1.01 }}
               whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
             >
-              Enter measurements (most accurate)
+              Enter measurements
             </motion.button>
           </div>
         </motion.div>

@@ -1,3 +1,4 @@
+import { poseQualityIssue } from './pose-quality'
 export type LivePoseStatus =
   | 'loading'
   | 'no_body'
@@ -8,6 +9,9 @@ export type LivePoseStatus =
   | 'too_far'
   | 'off_center'
   | 'posture'
+  | 'not_front_facing'
+  | 'arms_obscured'
+  | 'hold_still'
   | 'ready'
   | 'unavailable'
 
@@ -15,6 +19,7 @@ export interface LivePosePoint {
   x: number
   y: number
   visibility: number
+  z?: number
 }
 
 export interface LivePoseFrame {
@@ -26,27 +31,44 @@ export interface LivePoseFrame {
 const NO_FRAME: LivePoseFrame = { status: 'no_body', points: [], alignment: 0 }
 
 function average(values: number[]) {
-  return values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1)
+  return (
+    values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1)
+  )
 }
 
 function visibility(point: { visibility?: number } | undefined) {
   const value = point?.visibility
-  return value !== undefined && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0
+  return value !== undefined && Number.isFinite(value)
+    ? Math.max(0, Math.min(1, value))
+    : 0
 }
 
-export function assessDetectedPoses(poses: Array<Array<{ x: number; y: number; visibility?: number }>>): LivePoseFrame {
-  if (poses.length > 1) return { status: 'multiple_bodies', points: [], alignment: 0 }
+export function assessDetectedPoses(
+  poses: Array<Array<{ x: number; y: number; z?: number; visibility?: number }>>
+): LivePoseFrame {
+  if (poses.length > 1)
+    return { status: 'multiple_bodies', points: [], alignment: 0 }
   return assessLivePose(poses[0] || [])
 }
 
 /** Framing hints only; they never decide whether the shutter is available. */
-export function assessLivePose(landmarks: Array<{ x: number; y: number; visibility?: number }>): LivePoseFrame {
-  if (landmarks.length < 29 || landmarks.some(point => !point || !Number.isFinite(point.x) || !Number.isFinite(point.y))) return NO_FRAME
+export function assessLivePose(
+  landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }>
+): LivePoseFrame {
+  if (
+    landmarks.length < 29 ||
+    landmarks.some(
+      (point) =>
+        !point || !Number.isFinite(point.x) || !Number.isFinite(point.y)
+    )
+  )
+    return NO_FRAME
 
   const points = landmarks.map((point) => ({
     x: point.x,
     y: point.y,
     visibility: visibility(point),
+    z: point.z,
   }))
 
   const nose = points[0]
@@ -55,10 +77,16 @@ export function assessLivePose(landmarks: Array<{ x: number; y: number; visibili
   const knees = [points[25], points[26]]
   const ankles = [points[27], points[28]]
   const keyPoints = [nose, ...shoulders, ...hips, ...knees, ...ankles]
-  const meanVisibility = average(keyPoints.map((point) => point?.visibility ?? 0))
+  const meanVisibility = average(
+    keyPoints.map((point) => point?.visibility ?? 0)
+  )
 
-  if (meanVisibility < 0.5) return { status: 'low_visibility', points, alignment: 0.2 }
-  if (ankles.some((point) => !point || point.visibility < 0.38) || nose.visibility < 0.5) {
+  if (meanVisibility < 0.5)
+    return { status: 'low_visibility', points, alignment: 0.2 }
+  if (
+    ankles.some((point) => !point || point.visibility < 0.38) ||
+    nose.visibility < 0.5
+  ) {
     return { status: 'not_full_body', points, alignment: 0.35 }
   }
 
@@ -71,12 +99,84 @@ export function assessLivePose(landmarks: Array<{ x: number; y: number; visibili
   const shoulderTilt = Math.abs(shoulders[0].y - shoulders[1].y)
   const hipTilt = Math.abs(hips[0].y - hips[1].y)
 
-  if (topY < 0.025 || bottomY > 0.985) return { status: 'not_full_body', points, alignment: 0.45 }
-  if (bodyHeight > 0.91 || shoulderWidth > 0.56) return { status: 'too_close', points, alignment: 0.55 }
+  if (topY < 0.025 || bottomY > 0.985)
+    return { status: 'not_full_body', points, alignment: 0.45 }
+  if (bodyHeight > 0.91 || shoulderWidth > 0.56)
+    return { status: 'too_close', points, alignment: 0.55 }
   if (bodyHeight < 0.45) return { status: 'too_far', points, alignment: 0.55 }
-  if (centerOffset > 0.18) return { status: 'off_center', points, alignment: 0.7 }
-  if (shoulderTilt > 0.055 || hipTilt > 0.06) return { status: 'posture', points, alignment: 0.78 }
+  if (centerOffset > 0.18)
+    return { status: 'off_center', points, alignment: 0.7 }
+  if (shoulderTilt > 0.055 || hipTilt > 0.06)
+    return { status: 'posture', points, alignment: 0.78 }
 
-  const alignment = Math.max(0, Math.min(1, 1 - centerOffset * 2.6 - shoulderTilt - hipTilt))
+  const issue = poseQualityIssue(points)
+  if (issue) return { status: issue, points, alignment: 0.65 }
+
+  const alignment = Math.max(
+    0,
+    Math.min(1, 1 - centerOffset * 2.6 - shoulderTilt - hipTilt)
+  )
   return { status: 'ready', points, alignment }
+}
+
+/** Smooth visual points and require a brief stable sequence before a positive cue. */
+export function createPoseFeedbackTracker() {
+  let previous: LivePoseFrame | null = null
+  let stableSince: number | null = null
+  let lastTime = -Infinity
+  return (frame: LivePoseFrame, time: number, aspect = 1): LivePoseFrame => {
+    const gap = time - lastTime > 900
+    lastTime = time
+    if (
+      !frame.points.length ||
+      [
+        'no_body',
+        'multiple_bodies',
+        'unavailable',
+        'loading',
+        'low_visibility',
+      ].includes(frame.status)
+    ) {
+      previous = null
+      stableSince = null
+      return frame
+    }
+    const comparable =
+      previous && !gap && previous.points.length === frame.points.length
+    const moving =
+      !!comparable &&
+      [0, 11, 12, 23, 24, 27, 28].some(
+        (i) =>
+          frame.points[i]?.visibility > 0.6 &&
+          previous!.points[i]?.visibility > 0.6 &&
+          Math.hypot(
+            (frame.points[i].x - previous!.points[i].x) * aspect,
+            frame.points[i].y - previous!.points[i].y
+          ) > 0.025
+      )
+    if (frame.status !== 'ready' || moving || gap) stableSince = null
+    if (frame.status === 'ready' && !moving && stableSince === null)
+      stableSince = time
+    const settled = stableSince !== null && time - stableSince >= 700
+    const points = frame.points.map((point, i) =>
+      comparable &&
+      point.visibility >= 0.5 &&
+      previous!.points[i].visibility >= 0.5
+        ? {
+            ...point,
+            x: previous!.points[i].x * 0.3 + point.x * 0.7,
+            y: previous!.points[i].y * 0.3 + point.y * 0.7,
+          }
+        : point
+    )
+    previous = { ...frame, points: frame.points }
+    return {
+      ...frame,
+      points,
+      status:
+        frame.status === 'ready' && (!settled || moving)
+          ? 'hold_still'
+          : frame.status,
+    }
+  }
 }

@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'framer-motion'
 import { IntroScreen } from '@/components/vora/intro-screen'
+import { LiveCameraScreen } from '@/components/vora/live-camera-screen'
+import { combinePhotoWidths } from '@/lib/photo-session'
 import { PhotoUploadScreen } from '@/components/vora/photo-upload-screen'
 import { MeasurementsQuizScreen } from '@/components/vora/measurements-quiz-screen'
 import { ProcessingScreen } from '@/components/vora/processing-screen'
@@ -19,6 +21,7 @@ import { measureFromImage } from '@/lib/photo-flow'
 type Step =
   | 'intro'      // Entry screen: "WE KNOW ONLINE FITTING IS A STRUGGLE"
   | 'measurements' // Measurements quiz (Enter Measurements)
+  | 'camera'
   | 'upload'     // Screen 4: photo upload
   | 'processing' // Screen 5: analyzing animation
   | 'photoFallback' // Photo unusable / low confidence → retry or manual
@@ -38,12 +41,16 @@ export default function VoraApp() {
   const [processingReturnStep, setProcessingReturnStep] = useState<Step>('upload')
   const [analysisResult, setAnalysisResult] = useState<BodyAnalysis | null>(null)
   const [isAnalysisComplete, setIsAnalysisComplete] = useState(false)
+  const [libraryFiles, setLibraryFiles] = useState<File[]>([])
+  const analysisRun = useRef(0)
   const [photoIssue, setPhotoIssue] = useState<PhotoIssue | null>(null)
   const [emailProvided, setEmailProvided] = useState(false)
   const prefersReducedMotion = useReducedMotion()
   // Show the loading splash from the very first paint so it covers the page,
   // then reveal the app — instead of flashing the page first.
   const [showIntro, setShowIntro] = useState(true)
+
+  useEffect(() => { window.scrollTo(0, 0) }, [step])
 
   const introDurationMs = 1350
 
@@ -82,8 +89,10 @@ export default function VoraApp() {
 
   // ── Photo flow: 100% client-side (MediaPipe), nothing uploaded ────────────
   const handleAnalyze = useCallback(
-    async (files: File[]) => {
-      setProcessingReturnStep('upload')
+    async (files: File[], source: 'camera' | 'library') => {
+      if (files.length !== (source === 'camera' ? 1 : 3)) return
+      const run = ++analysisRun.current
+      setProcessingReturnStep(source === 'camera' ? 'camera' : 'upload')
       setStep('processing')
       setIsAnalysisComplete(false)
       setPhotoIssue(null)
@@ -95,6 +104,7 @@ export default function VoraApp() {
 
         for (const file of files) {
           const measured = await measureFromImage(file)
+          if (run !== analysisRun.current) return
           if (measured.ok && measured.widths) {
             validWidths.push(measured.widths)
             continue
@@ -103,6 +113,7 @@ export default function VoraApp() {
         }
 
         await waitRemaining(started)
+        if (run !== analysisRun.current) return
 
         if (validWidths.length === 0) {
           setPhotoIssue(lastReason)
@@ -110,15 +121,11 @@ export default function VoraApp() {
           return
         }
 
-        // Normalize each photo before averaging so camera distance cannot make
-        // one image dominate the result. All usable uploads contribute.
-        const widths = {
-          shoulderW:
-            validWidths.reduce((sum, item) => sum + item.shoulderW / item.hipW, 0) / validWidths.length,
-          waistW: validWidths.reduce((sum, item) => sum + item.waistW / item.hipW, 0) / validWidths.length,
-          hipW: 1,
-          visibility:
-            validWidths.reduce((sum, item) => sum + (item.visibility ?? 1), 0) / validWidths.length,
+        const widths = combinePhotoWidths(validWidths, source)
+        if (!widths) {
+          setPhotoIssue('inconsistent_photos')
+          setStep('photoFallback')
+          return
         }
 
         const result = classifyBodyType(widths)
@@ -132,8 +139,10 @@ export default function VoraApp() {
         setAnalysisResult(buildAnalysisFromClassification(result, 'photo'))
         setIsAnalysisComplete(true)
       } catch (error) {
+        if (run !== analysisRun.current) return
         console.error('[vora] photo analysis failed:', error instanceof Error ? error.message : error)
         await waitRemaining(started)
+        if (run !== analysisRun.current) return
         setPhotoIssue('load_failed')
         setStep('photoFallback')
       }
@@ -144,6 +153,7 @@ export default function VoraApp() {
   // ── Manual flow: same classifier, fully deterministic ─────────────────────
   const handleMeasurementAnalyze = useCallback(
     async (payload: ManualMeasurements) => {
+      const run = ++analysisRun.current
       setProcessingReturnStep('measurements')
       setStep('processing')
       setIsAnalysisComplete(false)
@@ -153,11 +163,13 @@ export default function VoraApp() {
       try {
         const analysis = analyzeMeasurements(payload)
         await waitRemaining(started)
+        if (run !== analysisRun.current) return
         setAnalysisResult(analysis)
         setIsAnalysisComplete(true)
       } catch (error) {
         console.error('[vora] measurement analysis failed:', error instanceof Error ? error.message : error)
         await waitRemaining(started)
+        if (run !== analysisRun.current) return
         setAnalysisResult({ ...buildAnalysisFromBodyType('rectangle', 'low'), analysisSource: 'measurement' })
         setIsAnalysisComplete(true)
       }
@@ -166,6 +178,8 @@ export default function VoraApp() {
   )
 
   const handleRedo = useCallback(() => {
+    analysisRun.current += 1
+    setLibraryFiles([])
     setStep('intro')
     setUploadBackStep('intro')
     setAnalysisResult(null)
@@ -249,6 +263,7 @@ export default function VoraApp() {
                   if (typeof window !== 'undefined') window.history.back()
                 }}
                 onUploadPhotos={() => goToUpload('intro')}
+                onTakePhoto={() => setStep('camera')}
                 onEnterMeasurements={() => setStep('measurements')}
               />
             )}
@@ -260,8 +275,10 @@ export default function VoraApp() {
               />
             )}
 
+            {step === 'camera' && <LiveCameraScreen onSubmit={files => void handleAnalyze(files, 'camera')} onBack={() => setStep('intro')} onUseLibrary={() => goToUpload('intro')} onUseMeasurements={() => setStep('measurements')} />}
+
             {step === 'upload' && (
-              <PhotoUploadScreen onSubmit={handleAnalyze} onBack={() => setStep(uploadBackStep)} onUseMeasurements={() => setStep('measurements')} />
+              <PhotoUploadScreen files={libraryFiles} onFilesChange={setLibraryFiles} onTakePhoto={() => setStep('camera')} onSubmit={files => void handleAnalyze(files, 'library')} onBack={() => setStep(uploadBackStep)} onUseMeasurements={() => setStep('measurements')} />
             )}
 
             {step === 'processing' && (
@@ -269,6 +286,7 @@ export default function VoraApp() {
                 isComplete={isAnalysisComplete}
                 source={processingReturnStep === 'measurements' ? 'measurement' : 'photo'}
                 onReturn={() => {
+                  analysisRun.current += 1
                   setIsAnalysisComplete(false)
                   setStep(processingReturnStep)
                 }}
@@ -281,7 +299,7 @@ export default function VoraApp() {
             {step === 'photoFallback' && photoIssue && (
               <PhotoFallbackScreen
                 issue={photoIssue}
-                onRetryPhoto={() => setStep('upload')}
+                onRetryPhoto={() => setStep(processingReturnStep)}
                 onEnterMeasurements={() => setStep('measurements')}
                 onBack={() => setStep('intro')}
               />
