@@ -45,7 +45,7 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
             Share your email to get your results
           </h2>
           <p className="mb-8 text-[13px] leading-relaxed text-foreground/50">
-            We&apos;ll send your personalized style profile and keep your picks handy.
+            Your style profile is ready to view here. In this MVP, we don&apos;t store your email or send result emails.
           </p>
 
           <form
