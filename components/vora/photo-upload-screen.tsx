@@ -12,9 +12,10 @@ import { VORA_FLOW_MAX } from './vora-layout'
 interface PhotoUploadScreenProps {
   onSubmit: (files: File[]) => void
   onBack: () => void
+  onUseMeasurements: () => void
 }
 
-export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) {
+export function PhotoUploadScreen({ onSubmit, onBack, onUseMeasurements }: PhotoUploadScreenProps) {
   const [slots, setSlots] = useState<PhotoSlotsState>(() => [null, null, null])
   const prefersReducedMotion = useReducedMotion()
   const slotsRef = useRef(slots)
@@ -63,7 +64,7 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
         animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
         transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
       >
-        <PhotoUploadFlip slots={slots} onSlotsChange={setSlots} />
+        <PhotoUploadFlip slots={slots} onSlotsChange={setSlots} onUseMeasurements={onUseMeasurements} />
       </motion.div>
 
       {hasPhotos && (
