@@ -129,7 +129,7 @@ export function ResultsScreen({ analysis, onRedo, onShowRecommendations }: Resul
         <p className="px-0.5 text-[12px] leading-relaxed text-foreground/55 sm:px-0 sm:text-[13px]">
           {analysis.analysisSource === 'measurement'
             ? "We've analyzed your measurements. Here's what we discovered."
-            : "We've analyzed your measurements and photo. Here's what we discovered."}
+            : "We've analyzed your photo. Here's what we discovered."}
         </p>
       </motion.div>
 

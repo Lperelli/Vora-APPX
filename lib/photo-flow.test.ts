@@ -67,4 +67,47 @@ describe('single-photo analysis resources', () => {
     expect((await measureFromImage(new Blob())).ok).toBe(true)
     expect(model.create).toHaveBeenCalledTimes(3)
   })
+  it('measures the torso, excluding separated arms on every sampled row', async () => {
+    const data = fixture()
+    data.mask.getAsFloat32Array.mockImplementation(() => {
+      const values = new Float32Array(10000)
+      for (let y=0; y<100; y++) {
+        values.fill(1, y*100+40, y*100+60)
+        values.fill(1, y*100+20, y*100+25)
+        values.fill(1, y*100+75, y*100+80)
+      }
+      return values
+    })
+    model.detect.mockReturnValue(data.result)
+    const { measureFromImage } = await import('./photo-flow')
+    expect((await measureFromImage(new Blob())).widths).toMatchObject({ shoulderW: 20, waistW: 20, hipW: 20 })
+  })
+  it('uses neighbouring rows to tolerate a single segmentation outlier', async () => {
+    const data = fixture()
+    const original = data.mask.getAsFloat32Array()
+    original.fill(1, 25*100, 26*100)
+    data.mask.getAsFloat32Array.mockReturnValue(original)
+    model.detect.mockReturnValue(data.result)
+    const { measureFromImage } = await import('./photo-flow')
+    expect((await measureFromImage(new Blob())).widths?.shoulderW).toBe(60)
+  })
+  it('rejects a detached segment far from the torso centre rather than measuring a limb', async () => {
+    const data = fixture()
+    data.mask.getAsFloat32Array.mockImplementation(() => {
+      const values = new Float32Array(10000)
+      for (let y=0; y<100; y++) values.fill(1, y*100+10, y*100+20)
+      return values
+    })
+    model.detect.mockReturnValue(data.result)
+    const { measureFromImage } = await import('./photo-flow')
+    expect((await measureFromImage(new Blob())).reason).toBe('silhouette_unreadable')
+  })
+  it('does not select one of multiple people, and releases all masks', async () => {
+    const data = fixture(); const secondMask = { ...data.mask, close: vi.fn() }
+    model.detect.mockReturnValue({ landmarks: [data.points, data.points], segmentationMasks: [data.mask, secondMask] })
+    const { measureFromImage } = await import('./photo-flow')
+    expect((await measureFromImage(new Blob())).reason).toBe('multiple_bodies')
+    expect(data.mask.close).toHaveBeenCalledOnce()
+    expect(secondMask.close).toHaveBeenCalledOnce()
+  })
 })

@@ -97,9 +97,13 @@ export function hasLiveVideo(stream: MediaStream | null) {
   return !!stream?.getVideoTracks().some(track => track.readyState === 'live' && !track.muted)
 }
 
-export async function requestVideoStream(facing: CameraFacingMode, signal: AbortSignal) {
+export async function requestVideoStream(facing: CameraFacingMode, signal: AbortSignal, deviceId?: string) {
   const media = navigator.mediaDevices
-  const size = { width: { ideal: 1080 }, height: { ideal: 1440 } }
+  const size = { width: { ideal: 1080 }, height: { ideal: 1440 }, frameRate: { ideal: 24, max: 30 } }
+  if (deviceId) {
+    const stream = await acquireStream(media, { video: { ...size, deviceId: { exact: deviceId } }, audio: false }, signal)
+    return { stream, facingMode: inferredFacing(stream, facing) }
+  }
   const choices: MediaTrackConstraints[] = [
     { ...size, facingMode: { exact: facing } },
     { ...size, facingMode: { ideal: facing } },

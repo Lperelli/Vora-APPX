@@ -1,9 +1,7 @@
-import { asset } from '@/lib/base-path'
-import { POSE_MODEL_PATH, POSE_WASM_BASE } from '@/lib/photo-flow'
-
 export type LivePoseStatus =
   | 'loading'
   | 'no_body'
+  | 'multiple_bodies'
   | 'low_visibility'
   | 'not_full_body'
   | 'too_close'
@@ -25,15 +23,7 @@ export interface LivePoseFrame {
   alignment: number
 }
 
-type PoseLandmarkerVideo = {
-  detectForVideo: (
-    video: HTMLVideoElement,
-    timestampMs: number
-  ) => { landmarks?: Array<Array<{ x: number; y: number; visibility?: number }>> }
-}
-
 const NO_FRAME: LivePoseFrame = { status: 'no_body', points: [], alignment: 0 }
-let videoLandmarkerPromise: Promise<PoseLandmarkerVideo> | null = null
 
 function average(values: number[]) {
   return values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1)
@@ -44,50 +34,9 @@ function visibility(point: { visibility?: number } | undefined) {
   return value !== undefined && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0
 }
 
-async function getVideoLandmarker(): Promise<PoseLandmarkerVideo> {
-  if (!videoLandmarkerPromise) {
-    videoLandmarkerPromise = (async () => {
-      const { FilesetResolver, PoseLandmarker } = await import('@mediapipe/tasks-vision')
-      const fileset = await FilesetResolver.forVisionTasks(asset(POSE_WASM_BASE))
-      const options = (delegate: 'GPU' | 'CPU') => ({
-        baseOptions: { modelAssetPath: asset(POSE_MODEL_PATH), delegate },
-        runningMode: 'VIDEO' as const,
-        numPoses: 1,
-        minPoseDetectionConfidence: 0.55,
-        minPosePresenceConfidence: 0.55,
-        minTrackingConfidence: 0.55,
-        outputSegmentationMasks: false,
-      })
-      try {
-        return (await PoseLandmarker.createFromOptions(fileset, options('GPU'))) as PoseLandmarkerVideo
-      } catch {
-        return (await PoseLandmarker.createFromOptions(fileset, options('CPU'))) as PoseLandmarkerVideo
-      }
-    })().catch(error => {
-      videoLandmarkerPromise = null
-      throw error
-    })
-  }
-  return videoLandmarkerPromise
-}
-
-export function preloadLivePoseGuide() {
-  return getVideoLandmarker().then(() => undefined)
-}
-
-/**
- * Gives a Face-ID-like framing signal without identifying the person. All
- * inference happens locally and only normalized pose points leave MediaPipe.
- */
-export async function detectLivePose(video: HTMLVideoElement, timestampMs: number): Promise<LivePoseFrame> {
-  let result: ReturnType<PoseLandmarkerVideo['detectForVideo']>
-  try {
-    result = (await getVideoLandmarker()).detectForVideo(video, timestampMs)
-  } catch {
-    return { status: 'unavailable', points: [], alignment: 0 }
-  }
-
-  return assessLivePose(result.landmarks?.[0] || [])
+export function assessDetectedPoses(poses: Array<Array<{ x: number; y: number; visibility?: number }>>): LivePoseFrame {
+  if (poses.length > 1) return { status: 'multiple_bodies', points: [], alignment: 0 }
+  return assessLivePose(poses[0] || [])
 }
 
 /** Framing hints only; they never decide whether the shutter is available. */

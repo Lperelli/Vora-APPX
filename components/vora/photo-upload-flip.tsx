@@ -4,17 +4,12 @@ import Image from 'next/image'
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Camera, Images, Loader2, SwitchCamera, X } from 'lucide-react'
-import { hasLiveVideo, CAMERA_MESSAGES, cameraIssue, captureVideoFrame, requestVideoStream, startCaptureCountdown, stopMediaStream, waitForVideo, type CameraFacingMode, type CameraIssue } from "@/lib/camera"
+import { Camera, Images, X } from 'lucide-react'
+import { hasLiveVideo, cameraIssue, captureVideoFrame, requestVideoStream, stopMediaStream, waitForVideo, type CameraFacingMode, type CameraIssue } from "@/lib/camera"
 import { PhotoGuidanceList } from './photo-guidance'
 import { VORA_UPLOAD_PANEL_MAX } from './vora-layout'
 import { usePhotoDialog } from './use-photo-dialog'
-import {
-  detectLivePose,
-  preloadLivePoseGuide,
-  type LivePoseFrame,
-  type LivePoseStatus,
-} from '@/lib/live-pose-guide'
+import { CameraCaptureModal, type CameraModalPhase, type CameraReviewPhoto } from './camera-capture-modal'
 
 export type FlipPhotoSlot = {
   file: File
@@ -39,11 +34,12 @@ interface PhotoUploadFlipProps {
  * When several images are chosen at once, fills empty slots one-by-one with a stagger
  * so each card flips first, then the next, then the next.
  */
-type CameraModalPhase = 'idle' | 'loading' | 'preview' | 'error'
-
 export function PhotoUploadFlip({ slots, onSlotsChange, onUseMeasurements }: PhotoUploadFlipProps) {
   const prefersReducedMotion = useReducedMotion()
   const fileRef = useRef<HTMLInputElement>(null)
+  const nativeCameraRef = useRef<HTMLInputElement>(null)
+  const reviewPhotoRef = useRef<CameraReviewPhoto | null>(null)
+  const [reviewPhoto, setReviewPhoto] = useState<CameraReviewPhoto | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const cameraStreamRef = useRef<MediaStream | null>(null)
   const cameraSessionRef = useRef(0)
@@ -57,13 +53,15 @@ export function PhotoUploadFlip({ slots, onSlotsChange, onUseMeasurements }: Pho
   const [sourceOpen, setSourceOpen] = useState(false)
   const [cameraPhase, setCameraPhase] = useState<CameraModalPhase>('idle')
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
-  const [cameraFacing, setCameraFacing] = useState<CameraFacingMode>('environment')
+  const [cameraFacing, setCameraFacing] = useState<CameraFacingMode>('user')
   const [cameraSwitching, setCameraSwitching] = useState(false)
   const [videoReady, setVideoReady] = useState(false)
   const [cameraError, setCameraError] = useState<CameraIssue>('unsupported')
   const [captureError, setCaptureError] = useState(false)
   const [capturing, setCapturing] = useState(false)
-  const [canSwitch, setCanSwitch] = useState(true)
+  const [canSwitch, setCanSwitch] = useState(false)
+  const [cameraDevices, setCameraDevices] = useState<Array<{ id: string; label: string }>>([])
+  const [cameraDeviceId, setCameraDeviceId] = useState('')
 
   const emptyCount = slots.filter((s) => s === null).length
 
@@ -233,12 +231,30 @@ export function PhotoUploadFlip({ slots, onSlotsChange, onUseMeasurements }: Pho
     fileRef.current?.click()
   }, [])
 
+  const clearReviewPhoto = useCallback(() => {
+    const photo = reviewPhotoRef.current
+    if (photo) {
+      URL.revokeObjectURL(photo.preview)
+      previewUrlsRef.current.delete(photo.preview)
+    }
+    reviewPhotoRef.current = null
+    setReviewPhoto(null)
+  }, [])
+
   const closeCameraModal = useCallback(() => {
     stopCameraStream()
+    clearReviewPhoto()
     setCameraSwitching(false)
     setCameraPhase('idle')
     setCaptureError(false)
-  }, [stopCameraStream])
+  }, [stopCameraStream, clearReviewPhoto])
+
+  const openNativeCamera = useCallback(() => {
+    setSourceOpen(false)
+    setGuidanceOpen(false)
+    closeCameraModal()
+    nativeCameraRef.current?.click()
+  }, [closeCameraModal])
 
   const captureFromCamera = useCallback(async () => {
     const v = videoRef.current
@@ -253,8 +269,13 @@ export function PhotoUploadFlip({ slots, onSlotsChange, onUseMeasurements }: Pho
       const blob = await captureVideoFrame(v, signal)
       if (cameraSession !== cameraSessionRef.current) return
       const file = new File([blob], `vora-camera-${Date.now()}.jpg`, { type: 'image/jpeg' })
-      scheduleAddFiles([file])
-      closeCameraModal()
+      const preview = URL.createObjectURL(file)
+      const photo = { file, preview, width: v.videoWidth, height: v.videoHeight }
+      previewUrlsRef.current.add(preview)
+      stopCameraStream()
+      reviewPhotoRef.current = photo
+      setReviewPhoto(photo)
+      setCameraPhase('review')
     } catch {
       if (cameraSession === cameraSessionRef.current) setCaptureError(true)
     } finally {
@@ -263,9 +284,9 @@ export function PhotoUploadFlip({ slots, onSlotsChange, onUseMeasurements }: Pho
         setCapturing(false)
       }
     }
-  }, [scheduleAddFiles, closeCameraModal])
+  }, [stopCameraStream])
 
-  const startCamera = useCallback(async (facingMode: CameraFacingMode, switching = false) => {
+  const startCamera = useCallback(async (facingMode: CameraFacingMode, switching = false, deviceId?: string) => {
     if (emptyCount === 0) return
     if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       setCameraError('unsupported')
@@ -273,6 +294,8 @@ export function PhotoUploadFlip({ slots, onSlotsChange, onUseMeasurements }: Pho
       return
     }
     stopCameraStream()
+    clearReviewPhoto()
+    setCanSwitch(false)
     const cameraSession = cameraSessionRef.current
     const controller = new AbortController()
     cameraAbortRef.current = controller
@@ -280,7 +303,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange, onUseMeasurements }: Pho
     setCaptureError(false)
     setCameraPhase('loading')
     try {
-      const requested = await requestVideoStream(facingMode, controller.signal)
+      const requested = await requestVideoStream(facingMode, controller.signal, deviceId)
       if (cameraSession !== cameraSessionRef.current) {
         requested.stream.getTracks().forEach((track) => track.stop())
         return
@@ -288,9 +311,14 @@ export function PhotoUploadFlip({ slots, onSlotsChange, onUseMeasurements }: Pho
       cameraStreamRef.current = requested.stream
       setCameraStream(requested.stream)
       setCameraFacing(requested.facingMode)
+      setCameraDeviceId(requested.stream.getVideoTracks()[0]?.getSettings().deviceId || '')
       setCameraPhase('preview')
       void navigator.mediaDevices.enumerateDevices?.().then(devices => {
-        if (cameraSession === cameraSessionRef.current) setCanSwitch(devices.filter(device => device.kind === 'videoinput').length > 1)
+        if (cameraSession === cameraSessionRef.current) {
+          const cameras = devices.filter(device => device.kind === 'videoinput')
+          setCanSwitch(cameras.length > 1)
+          setCameraDevices(cameras.map((device, index) => ({ id: device.deviceId, label: device.label || `Camera ${index + 1}` })).filter(device => device.id))
+        }
       }).catch(() => {})
     } catch (error) {
       if (cameraSession === cameraSessionRef.current) {
@@ -300,7 +328,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange, onUseMeasurements }: Pho
     } finally {
       if (cameraSession === cameraSessionRef.current) setCameraSwitching(false)
     }
-  }, [emptyCount, stopCameraStream])
+  }, [emptyCount, stopCameraStream, clearReviewPhoto])
 
   const openCamera = useCallback(() => {
     setSourceOpen(false)
@@ -344,6 +372,8 @@ export function PhotoUploadFlip({ slots, onSlotsChange, onUseMeasurements }: Pho
         className="hidden"
         onChange={handleGalleryChange}
       />
+      <input ref={nativeCameraRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={event => { scheduleAddFiles(Array.from(event.target.files || []).slice(0, 1)); event.target.value = '' }} />
     </>
   )
 
@@ -362,10 +392,19 @@ export function PhotoUploadFlip({ slots, onSlotsChange, onUseMeasurements }: Pho
         capturing={capturing}
         captureError={captureError}
         canSwitch={canSwitch}
+        cameraDevices={cameraDevices}
+        cameraDeviceId={cameraDeviceId}
+        onSelectCamera={deviceId => void startCamera(cameraFacing, true, deviceId)}
+        reviewPhoto={reviewPhoto}
         onClose={closeCameraModal}
         onCapture={captureFromCamera}
         onSwitchCamera={() => void switchCamera()}
         onRetry={() => void openCamera()}
+        onUsePhoto={() => {
+          if (reviewPhotoRef.current) scheduleAddFiles([reviewPhotoRef.current.file])
+          closeCameraModal()
+        }}
+        onNativeCamera={openNativeCamera}
         onOpenGallery={() => {
           openGallery()
           closeCameraModal()
@@ -437,6 +476,9 @@ export function PhotoUploadFlip({ slots, onSlotsChange, onUseMeasurements }: Pho
         >
           <Camera className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
           Use guided camera
+        </button>
+        <button type="button" onClick={openNativeCamera} disabled={emptyCount === 0} className="min-h-11 px-4 text-[11px] text-white/60 underline underline-offset-4 transition hover:text-white disabled:opacity-35">
+          Take a photo with your phone camera
         </button>
       </div>
     </>
@@ -675,420 +717,6 @@ function PhotoSourceModal({
         </div>
       </motion.div>
     </div>
-  )
-}
-
-function CameraCaptureModal({
-  phase,
-  videoRef,
-  facingMode,
-  switching,
-  videoReady,
-  error,
-  capturing,
-  captureError,
-  canSwitch,
-  onClose,
-  onCapture,
-  onSwitchCamera,
-  onRetry,
-  onOpenGallery,
-  onUseMeasurements,
-}: {
-  phase: Exclude<CameraModalPhase, 'idle'>
-  videoRef: React.RefObject<HTMLVideoElement | null>
-  facingMode: CameraFacingMode
-  switching: boolean
-  videoReady: boolean
-  error: CameraIssue
-  capturing: boolean
-  captureError: boolean
-  canSwitch: boolean
-  onClose: () => void
-  onCapture: () => Promise<void>
-  onSwitchCamera: () => void
-  onRetry: () => void
-  onOpenGallery: () => void
-  onUseMeasurements: () => void
-}) {
-  const [poseFrame, setPoseFrame] = useState<LivePoseFrame>({ status: 'loading', points: [], alignment: 0 })
-  const [frameSize, setFrameSize] = useState({ width: 320, height: 520 })
-  const [showGuide, setShowGuide] = useState(true)
-  const prefersReducedMotion = useReducedMotion()
-  const [countdownStartedAt, setCountdownStartedAt] = useState<number | null>(null)
-  const [countdown, setCountdown] = useState(10)
-  const captureCallbackRef = useRef(onCapture)
-  captureCallbackRef.current = onCapture
-
-  useEffect(() => {
-    if (phase !== 'preview' || switching || !videoReady) {
-      setPoseFrame({ status: 'loading', points: [], alignment: 0 })
-      setCountdownStartedAt(null)
-    }
-  }, [phase, facingMode, switching, videoReady])
-
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video || !videoReady) return
-    const updateSize = () => setFrameSize({ width: video.videoWidth || 320, height: video.videoHeight || 520 })
-    updateSize()
-    video.addEventListener('resize', updateSize)
-    return () => video.removeEventListener('resize', updateSize)
-  }, [videoReady, videoRef])
-
-  useEffect(() => {
-    if (phase !== 'preview' || !videoReady || switching || capturing || countdownStartedAt !== null || !showGuide) return
-    const video = videoRef.current
-    if (!video) return
-
-    let active = true
-    let animationFrame = 0
-    let lastInference = 0
-    let inferenceRunning = false
-    let lastVideoTime = -1
-    let guideAvailable = true
-
-    void preloadLivePoseGuide().catch(() => {
-      guideAvailable = false
-      if (active) setPoseFrame({ status: 'unavailable', points: [], alignment: 0 })
-    })
-
-    const update = (now: number) => {
-      if (!active) return
-      // Five new frames per second is sufficient for framing. Pause during the timer.
-      if (guideAvailable && !document.hidden && video.readyState >= 2 && video.currentTime !== lastVideoTime && now - lastInference >= 200 && !inferenceRunning) {
-        lastInference = now
-        lastVideoTime = video.currentTime
-        inferenceRunning = true
-        void detectLivePose(video, now)
-          .then((frame) => {
-            if (!active) return
-            setPoseFrame(frame)
-            if (frame.status === 'unavailable') guideAvailable = false
-          })
-          .catch(() => {
-            guideAvailable = false
-            if (active) setPoseFrame({ status: 'unavailable', points: [], alignment: 0 })
-          })
-          .finally(() => {
-            inferenceRunning = false
-          })
-      }
-      if (guideAvailable) animationFrame = window.requestAnimationFrame(update)
-    }
-
-    animationFrame = window.requestAnimationFrame(update)
-    return () => {
-      active = false
-      window.cancelAnimationFrame(animationFrame)
-    }
-  }, [phase, videoReady, videoRef, switching, capturing, countdownStartedAt, showGuide])
-
-  const dialogRef = usePhotoDialog(onClose)
-
-  // Framing is a suggestion: the saved image is checked during analysis.
-  const captureReady = !switching && !capturing && videoReady
-  const countingDown = countdownStartedAt !== null
-
-  useEffect(() => {
-    if (countdownStartedAt === null) return
-    if (phase !== 'preview' || switching || !videoReady) {
-      setCountdownStartedAt(null)
-      return
-    }
-    return startCaptureCountdown({
-      canCapture: () => !document.hidden && !!videoRef.current && videoRef.current.readyState >= 2 && videoRef.current.videoWidth > 0 && hasLiveVideo(videoRef.current.srcObject as MediaStream | null),
-      onTick: setCountdown,
-      onCancel: () => setCountdownStartedAt(null),
-      onCapture: () => {
-        setCountdownStartedAt(null)
-        void captureCallbackRef.current()
-      },
-    })
-  }, [countdownStartedAt, phase, switching, videoReady])
-
-  const startCountdown = () => {
-    if (!captureReady || countingDown) return
-    setCountdown(10)
-    setCountdownStartedAt(Date.now())
-  }
-  const guidance = CAMERA_GUIDANCE[showGuide ? poseFrame.status : 'unavailable']
-  const mirrored = facingMode === 'user'
-
-  return (
-    <div
-      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/88 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm"
-      ref={dialogRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="vora-camera-title"
-    >
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default"
-        tabIndex={-1}
-        aria-label="Close camera"
-        onClick={onClose}
-      />
-      <div className="relative z-[1] max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-[20px] border border-white/12 bg-[oklch(0.12_0_0)] p-4 shadow-[0_32px_80px_-20px_rgba(0,0,0,0.95)] sm:p-5">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 id="vora-camera-title" className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/90">
-            Camera
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-white/80 transition hover:bg-white/10"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {phase === 'loading' && (
-          <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 py-10">
-            <Loader2 className="h-10 w-10 animate-spin text-white/75" aria-hidden />
-            <p className="text-center text-xs text-white/65" role="status">{switching ? 'Switching camera…' : 'Starting camera…'}</p>
-            <p className="max-w-xs text-center text-xs leading-relaxed text-white/50">Allow camera access if your browser asks. You can also use an existing photo.</p>
-            <button type="button" onClick={onOpenGallery} className="min-h-11 text-xs text-white underline underline-offset-4">Choose from photo library</button>
-          </div>
-        )}
-
-        {phase === 'preview' && (
-          <div className="space-y-4">
-            <div className="relative mx-auto h-[min(50dvh,460px)] w-full overflow-hidden rounded-[4px] bg-black ring-1 ring-white/10">
-              <video
-                ref={videoRef}
-                className={`absolute inset-0 h-full w-full object-contain ${mirrored ? '-scale-x-100' : ''}`}
-                muted
-                playsInline
-                autoPlay
-              />
-              {showGuide && videoReady && <BodyFramingGuide status={poseFrame.status} points={countingDown ? [] : poseFrame.points} mirrored={mirrored} frameSize={frameSize} reducedMotion={!!prefersReducedMotion} />}
-              {canSwitch && <button
-                type="button"
-                onClick={onSwitchCamera}
-                disabled={switching || countingDown || capturing}
-                className="absolute right-3 top-3 z-[2] flex min-h-10 items-center gap-2 rounded-full border border-white/20 bg-black/62 px-3.5 text-[9px] font-medium uppercase tracking-[0.16em] text-white shadow-lg backdrop-blur-md transition hover:border-white/38 hover:bg-black/78 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60"
-                aria-label={facingMode === 'user' ? 'Switch to rear camera' : 'Switch to front camera'}
-              >
-                {switching ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <SwitchCamera className="h-4 w-4" aria-hidden />}
-                {facingMode === 'user' ? 'Front' : 'Rear'}
-              </button>}
-              {(!videoReady || capturing) && <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center bg-black/40"><span role="status" className="rounded-full bg-black/75 px-4 py-3 text-xs text-white">{capturing ? 'Saving photo…' : 'Waiting for live video…'}</span></div>}
-              {countingDown && (
-                <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center bg-black/15">
-                  <div className="flex h-28 w-28 items-center justify-center rounded-full border border-white/45 bg-black/45 font-serif text-7xl tabular-nums text-white backdrop-blur-sm" role="status" aria-live="polite" aria-atomic="true">
-                    <span className="sr-only">Photo in </span>{countdown}<span className="sr-only"> seconds</span>
-                  </div>
-                </div>
-              )}
-              {switching && (
-                <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-black/38 backdrop-blur-[2px]">
-                  <div className="flex items-center gap-2 rounded-full border border-white/15 bg-black/70 px-4 py-2 text-[9px] uppercase tracking-[0.18em] text-white/82">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                    Switching lens
-                  </div>
-                </div>
-              )}
-              <div className="pointer-events-none absolute inset-x-3 bottom-3 flex justify-center">
-                <div
-                  className={`max-w-[92%] rounded-full border px-4 py-2 text-center text-[9px] font-medium uppercase tracking-[0.16em] backdrop-blur-md transition-colors ${guidance.pill}`}
-                  aria-live="polite"
-                >
-                  {countingDown ? 'Stand naturally · keep head and feet visible' : guidance.label}
-                </div>
-              </div>
-            </div>
-            <p className="text-center text-[12px] leading-relaxed text-white/65">
-              Press the timer, then step back until your head and feet are visible. The lines are a guide — you don’t need to match them exactly. One photo is enough.
-            </p>
-            <button type="button" aria-pressed={showGuide} onClick={() => setShowGuide(value => !value)} disabled={countingDown || capturing} className="mx-auto block min-h-11 text-[11px] text-white/70 underline underline-offset-4">{showGuide ? 'Hide framing guide' : 'Show framing guide'}</button>
-            {captureError && <p role="alert" className="text-center text-xs leading-relaxed text-rose-200">{CAMERA_MESSAGES.capture}</p>}
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-full border border-white/15 bg-transparent px-5 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-white/70 transition hover:border-white/25 hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={countingDown ? () => setCountdownStartedAt(null) : startCountdown}
-                disabled={!captureReady}
-                className="rounded-full border border-white/20 bg-white/10 px-5 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {capturing ? 'Saving photo…' : countingDown ? 'Cancel timer' : captureReady ? 'Take photo in 10 seconds' : 'Waiting for live video…'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {phase === 'error' && (
-          <div className="space-y-4 py-2">
-            <p className="text-center text-sm leading-relaxed text-white/65">
-              {CAMERA_MESSAGES[error]}
-            </p>
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={onRetry}
-                className="rounded-full border border-white/18 bg-[oklch(0.17_0_0)] py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white transition hover:bg-[oklch(0.2_0_0)]"
-              >
-                Retry guided camera
-              </button>
-              <button
-                type="button"
-                onClick={onOpenGallery}
-                className="rounded-full border border-white/12 bg-transparent py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/75 transition hover:border-white/20 hover:text-white"
-              >
-                Choose from photo library
-              </button>
-              <button
-                type="button"
-                onClick={onUseMeasurements}
-                className="rounded-full border border-white/12 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/75 transition hover:border-white/25"
-              >
-                Enter measurements instead
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="py-2 text-center text-[10px] uppercase tracking-[0.2em] text-white/40 transition hover:text-white/60"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-const CAMERA_GUIDANCE: Record<LivePoseStatus, { label: string; pill: string }> = {
-  loading: { label: 'Preparing body guide…', pill: 'border-white/15 bg-black/45 text-white/70' },
-  no_body: { label: 'Step into frame', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
-  low_visibility: { label: 'Use brighter, even light', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
-  not_full_body: { label: 'Show head and feet', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
-  too_close: { label: 'Step back', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
-  too_far: { label: 'Move a little closer', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
-  off_center: { label: 'Center your body', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
-  posture: { label: 'Relax and stand naturally', pill: 'border-amber-200/35 bg-amber-950/45 text-amber-50' },
-  ready: { label: 'Ready to capture', pill: 'border-emerald-300/45 bg-emerald-950/55 text-emerald-50' },
-  unavailable: { label: 'Manual capture available', pill: 'border-white/20 bg-black/55 text-white/75' },
-}
-
-const POSE_CONNECTIONS = [
-  [11, 12],
-  [11, 23],
-  [12, 24],
-  [23, 24],
-  [23, 25],
-  [24, 26],
-  [25, 27],
-  [26, 28],
-] as const
-
-function BodyFramingGuide({
-  status,
-  points,
-  mirrored,
-  frameSize,
-  reducedMotion,
-}: {
-  status: LivePoseStatus
-  points: LivePoseFrame['points']
-  mirrored: boolean
-  frameSize: { width: number; height: number }
-  reducedMotion: boolean
-}) {
-  const guides = [
-    { label: 'SHOULDERS', y: 118 },
-    { label: 'WAIST', y: 245 },
-    { label: 'HIPS', y: 350 },
-    { label: 'FEET', y: 488 },
-  ] as const
-  const liveColor = status === 'ready' ? '#6ee7b7' : '#f8fafc'
-  const showPose = points.length > 28
-  const pointX = (x: number) => (mirrored ? 1 - x : x) * 320
-
-  return (
-    <svg
-      viewBox={`0 0 ${frameSize.width} ${frameSize.height}`}
-      preserveAspectRatio="xMidYMid meet"
-      className="pointer-events-none absolute inset-0 h-full w-full text-white"
-      aria-hidden
-    >
-      <g transform={`scale(${frameSize.width / 320} ${frameSize.height / 520})`}>
-      <defs>
-        <linearGradient id="vora-camera-scan" x1="0" x2="1">
-          <stop offset="0" stopColor={liveColor} stopOpacity="0" />
-          <stop offset="0.5" stopColor={liveColor} stopOpacity="0.72" />
-          <stop offset="1" stopColor={liveColor} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <rect x="1" y="1" width="318" height="518" rx="4" fill="none" stroke={liveColor} strokeOpacity="0.25" />
-      <path d="M18 52V25a10 10 0 0 1 10-10h28M264 15h28a10 10 0 0 1 10 10v27M302 468v27a10 10 0 0 1-10 10h-28M56 505H28a10 10 0 0 1-10-10v-27" fill="none" stroke={liveColor} strokeOpacity="0.75" strokeWidth="2" />
-      <circle cx="160" cy="58" r="31" fill="none" stroke="currentColor" strokeOpacity="0.72" strokeWidth="1.5" strokeDasharray="5 6" />
-      <line x1="160" y1="89" x2="160" y2="488" stroke="currentColor" strokeOpacity="0.55" strokeWidth="1.25" strokeDasharray="6 7" />
-      <text x="160" y="18" textAnchor="middle" fill="currentColor" fillOpacity="0.78" fontSize="8" letterSpacing="1.6">
-        HEAD
-      </text>
-      {guides.map(({ label, y }) => (
-        <g key={label}>
-          <line x1="40" y1={y} x2="280" y2={y} stroke="currentColor" strokeOpacity="0.62" strokeWidth="1.1" strokeDasharray="5 6" />
-          <line x1="155" y1={y} x2="165" y2={y} stroke="currentColor" strokeOpacity="0.9" strokeWidth="1.2" />
-          <text x="12" y={y + 3} fill="currentColor" fillOpacity="0.78" fontSize="7" letterSpacing="1.1">
-            {label}
-          </text>
-        </g>
-      ))}
-      {showPose && (
-        <g>
-          {POSE_CONNECTIONS.map(([from, to]) => {
-            const a = points[from]
-            const b = points[to]
-            if (!a || !b || a.visibility < 0.35 || b.visibility < 0.35) return null
-            return (
-              <line
-                key={`${from}-${to}`}
-                x1={pointX(a.x)}
-                y1={a.y * 520}
-                x2={pointX(b.x)}
-                y2={b.y * 520}
-                stroke={liveColor}
-                strokeOpacity="0.9"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            )
-          })}
-          {[0, 11, 12, 23, 24, 25, 26, 27, 28].map((index) => {
-            const point = points[index]
-            if (!point || point.visibility < 0.35) return null
-            return (
-              <circle
-                key={index}
-                cx={pointX(point.x)}
-                cy={point.y * 520}
-                r="3.25"
-                fill={liveColor}
-                fillOpacity="0.95"
-                stroke="#050505"
-                strokeOpacity="0.5"
-                strokeWidth="1"
-              />
-            )
-          })}
-        </g>
-      )}
-      <rect x="24" y="0" width="272" height="2" fill="url(#vora-camera-scan)" opacity="0.85">
-        {!reducedMotion && <animate attributeName="y" values="34;480;34" dur="3.2s" repeatCount="indefinite" />}
-      </rect>
-      </g>
-    </svg>
   )
 }
 
