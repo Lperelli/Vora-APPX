@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Clock, Upload } from 'lucide-react'
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
@@ -81,7 +82,10 @@ export function IntroScreen({ onBack, onUploadPhotos, onEnterMeasurements }: Int
         className="text-[10px] tracking-[0.25em] text-muted-foreground uppercase text-center px-4 shrink-0 pb-2"
         variants={item}
       >
-        Privacy First / Processed Locally, Never Stored
+        Photos processed on your device / No uploads or training
+        <Link href="/privacy" className="mt-3 block min-h-8 normal-case tracking-normal underline underline-offset-4 hover:text-foreground focus-visible:outline focus-visible:outline-offset-4">
+          How we handle your information
+        </Link>
       </motion.p>
     </motion.div>
   )

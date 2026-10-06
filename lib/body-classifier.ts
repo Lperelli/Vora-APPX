@@ -66,12 +66,9 @@ function decideType(SHR: number, WHR: number): BodyTypeId {
     return 'inverted-triangle' // shoulders notably wider
   }
   if (SHR <= 1 / T.widerRatio) {
-    return 'pear' // hips notably wider
+    return 'triangle' // hips notably wider
   }
-  if (WHR >= T.fullWaistWHR) {
-    return 'apple' // balanced but little/no waist definition
-  }
-  return 'rectangle' // balanced with a soft waist
+  return 'rectangle' // balanced proportions, including a less defined waist
 }
 
 function deriveConfidence(type: BodyTypeId, scores: Record<BodyTypeId, number>, visibility?: number): Confidence {
@@ -98,7 +95,7 @@ function deriveConfidence(type: BodyTypeId, scores: Record<BodyTypeId, number>, 
 }
 
 export function classifyBodyType({ shoulderW, waistW, hipW, visibility }: BodyWidths): ClassifyResult {
-  if (!(shoulderW > 0) || !(waistW > 0) || !(hipW > 0)) {
+  if (![shoulderW, waistW, hipW].every((width) => Number.isFinite(width) && width > 0)) {
     throw new Error('classifyBodyType: widths must be positive numbers')
   }
 

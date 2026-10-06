@@ -21,17 +21,6 @@ export const THRESHOLDS = {
   /** WHR <= this  ⇒  waist clearly defined (needed for hourglass). */
   definedWaistWHR: 0.75,
 
-  /**
-   * WHR >= this  ⇒  little/no waist definition (apple).
-   *
-   * NOTE: the spec text suggested 0.85, but the §8 acceptance tests require
-   * {100,92,100} (WHR 0.92) → rectangle and {100,98,100} (WHR 0.98) → apple.
-   * 0.85 would misclassify the rectangle case as apple, so this is calibrated
-   * to ~0.95 to satisfy those tests. RE-TUNE with real photos + the client's
-   * styling judgement once sample data exists.
-   */
-  fullWaistWHR: 0.95,
-
   /** SHR >= this ⇒ shoulders notably wider; SHR <= 1/this ⇒ hips notably wider. */
   widerRatio: 1.05,
 
@@ -50,8 +39,7 @@ export type Thresholds = typeof THRESHOLDS
 export const PROTOTYPES: Record<BodyTypeId, { SHR: number; WHR: number }> = {
   hourglass: { SHR: 1.0, WHR: 0.7 },
   rectangle: { SHR: 1.0, WHR: 0.85 },
-  pear: { SHR: 0.85, WHR: 0.75 },
-  apple: { SHR: 1.0, WHR: 0.98 },
+  triangle: { SHR: 0.85, WHR: 0.75 },
   'inverted-triangle': { SHR: 1.15, WHR: 0.8 },
 }
 

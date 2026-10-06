@@ -5,7 +5,7 @@ import { Check } from 'lucide-react'
 export const PHOTO_GUIDANCE_ITEMS = [
   'Just you',
   'Head to feet, clearly visible',
-  'Good-quality photos',
+  'One clear, full-length photo is enough',
   'No glasses, hats or accessories that hide your face or body',
   'Natural posture',
 ] as const

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
@@ -21,7 +22,7 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
 
   const photoCount = slots.filter((s) => s !== null).length
   const hasPhotos = photoCount > 0
-  const hasMinimumPhotos = photoCount >= 2
+  const hasMinimumPhotos = photoCount >= 1
 
   useEffect(() => {
     return () => {
@@ -33,7 +34,7 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
 
   const handleSubmit = () => {
     const files = slots.filter((s): s is NonNullable<typeof s> => s !== null).map((s) => s.file)
-    if (files.length < 2) return
+    if (files.length < 1) return
     onSubmit(files)
   }
 
@@ -78,8 +79,8 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
               <PhotoGuidanceList />
               <p className="border-t border-white/[0.08] pt-4 text-[11px] leading-relaxed text-foreground/50">
                 {hasMinimumPhotos
-                  ? `${photoCount} photos ready. You can add one more or continue.`
-                  : 'Add one more full-length photo to continue.'}
+                  ? `${photoCount === 1 ? '1 photo is' : `${photoCount} photos are`} ready. Extra photos are optional.`
+                  : 'Add one clear full-length photo to continue.'}
               </p>
             </div>
           </motion.div>
@@ -106,7 +107,10 @@ export function PhotoUploadScreen({ onSubmit, onBack }: PhotoUploadScreenProps) 
           animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.22, ease: [0.16, 1, 0.3, 1] }}
         >
-          Privacy First / Processed Locally, Never Stored
+          Your photos are processed on your device. VORA does not upload them to its servers or use them to train an algorithm.
+          <Link href="/privacy" className="mt-3 block min-h-8 normal-case tracking-normal underline underline-offset-4 hover:text-foreground focus-visible:outline focus-visible:outline-offset-4">
+            How we handle your information
+          </Link>
         </motion.p>
       </footer>
     </motion.div>
