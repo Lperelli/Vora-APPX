@@ -138,6 +138,8 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
   const fileRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const cameraStreamRef = useRef<MediaStream | null>(null)
+  const cameraSessionRef = useRef(0)
+  const capturePendingRef = useRef(false)
   const scheduleIdRef = useRef(0)
   const [mounted, setMounted] = useState(false)
   const [guidanceOpen, setGuidanceOpen] = useState(true)
@@ -154,6 +156,8 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
   }, [])
 
   const stopCameraStream = useCallback(() => {
+    cameraSessionRef.current += 1
+    capturePendingRef.current = false
     cameraStreamRef.current?.getTracks().forEach((track) => track.stop())
     cameraStreamRef.current = null
     setCameraStream(null)
@@ -241,7 +245,8 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
 
   const captureFromCamera = useCallback(() => {
     const v = videoRef.current
-    if (!v || v.videoWidth === 0) return
+    if (!v || v.videoWidth === 0 || v.readyState < 2 || !cameraStreamRef.current || capturePendingRef.current) return
+    const cameraSession = cameraSessionRef.current
     const w = v.videoWidth
     const h = v.videoHeight
     const canvas = document.createElement('canvas')
@@ -250,8 +255,11 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.drawImage(v, 0, 0, w, h)
+    capturePendingRef.current = true
     canvas.toBlob(
       (blob) => {
+        if (cameraSession !== cameraSessionRef.current) return
+        capturePendingRef.current = false
         if (!blob) return
         const file = new File([blob], `vora-camera-${Date.now()}.jpg`, { type: 'image/jpeg' })
         scheduleAddFiles([file])
@@ -269,18 +277,23 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
       return
     }
     stopCameraStream()
+    const cameraSession = cameraSessionRef.current
     setCameraSwitching(switching)
     if (!switching) setCameraPhase('loading')
     try {
       const requested = await requestVideoStream(facingMode)
+      if (cameraSession !== cameraSessionRef.current) {
+        requested.stream.getTracks().forEach((track) => track.stop())
+        return
+      }
       cameraStreamRef.current = requested.stream
       setCameraStream(requested.stream)
       setCameraFacing(requested.facingMode)
       setCameraPhase('preview')
     } catch {
-      setCameraPhase('error')
+      if (cameraSession === cameraSessionRef.current) setCameraPhase('error')
     } finally {
-      setCameraSwitching(false)
+      if (cameraSession === cameraSessionRef.current) setCameraSwitching(false)
     }
   }, [emptyCount, stopCameraStream])
 
@@ -390,7 +403,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
       </p>
       <div className="mt-3 space-y-3 px-0.5 text-center text-[13px] leading-relaxed text-white/58 sm:text-sm sm:leading-relaxed">
         <p>
-          Add at least 2 clear photos so we can understand your natural proportions. Tap any empty frame or use the
+          One clear full-length photo is enough to understand your natural proportions. Tap any empty frame or use the
           options below.
         </p>
       </div>
@@ -548,7 +561,7 @@ function PhotoGuidanceModal({
             Full-length photos
           </h2>
           <p className="mt-4 max-w-[330px] text-[13px] leading-[1.6] text-black/62 sm:text-[14px]">
-            We need at least 2 full-length photos to understand your proportions.
+            Take one clear full-length photo. Extra photos are optional.
           </p>
         </div>
 
@@ -687,13 +700,16 @@ function CameraCaptureModal({
 }) {
   const [videoReady, setVideoReady] = useState(false)
   const [poseFrame, setPoseFrame] = useState<LivePoseFrame>({ status: 'loading', points: [], alignment: 0 })
-  const [readyProgress, setReadyProgress] = useState(0)
+  const [countdownStartedAt, setCountdownStartedAt] = useState<number | null>(null)
+  const [countdown, setCountdown] = useState(10)
+  const captureCallbackRef = useRef(onCapture)
+  captureCallbackRef.current = onCapture
 
   useEffect(() => {
     if (phase !== 'preview') {
       setVideoReady(false)
       setPoseFrame({ status: 'loading', points: [], alignment: 0 })
-      setReadyProgress(0)
+      setCountdownStartedAt(null)
     }
   }, [phase, facingMode, switching])
 
@@ -706,7 +722,6 @@ function CameraCaptureModal({
     let animationFrame = 0
     let lastInference = 0
     let inferenceRunning = false
-    let stableSince = 0
 
     void preloadLivePoseGuide().catch(() => {
       if (active) setPoseFrame({ status: 'unavailable', points: [], alignment: 0 })
@@ -721,13 +736,6 @@ function CameraCaptureModal({
           .then((frame) => {
             if (!active) return
             setPoseFrame(frame)
-            if (frame.status === 'ready') {
-              if (!stableSince) stableSince = now
-              setReadyProgress(Math.min(1, (now - stableSince) / 900))
-            } else {
-              stableSince = 0
-              setReadyProgress(frame.status === 'unavailable' ? 1 : 0)
-            }
           })
           .finally(() => {
             inferenceRunning = false
@@ -751,8 +759,44 @@ function CameraCaptureModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const captureReady =
-    !switching && videoReady && (poseFrame.status === 'unavailable' || (poseFrame.status === 'ready' && readyProgress >= 1))
+  // Framing is a suggestion: the saved image is checked during analysis.
+  const captureReady = !switching && videoReady
+  const countingDown = countdownStartedAt !== null
+
+  useEffect(() => {
+    if (countdownStartedAt === null) return
+    if (phase !== 'preview' || switching || !videoReady) {
+      setCountdownStartedAt(null)
+      return
+    }
+    let captured = false
+    const cancelWhenHidden = () => {
+      if (document.hidden) setCountdownStartedAt(null)
+    }
+    const tick = () => {
+      if (captured || document.hidden) return
+      const seconds = Math.max(0, Math.ceil((countdownStartedAt + 10_000 - Date.now()) / 1000))
+      setCountdown(seconds)
+      if (seconds === 0) {
+        captured = true
+        setCountdownStartedAt(null)
+        captureCallbackRef.current()
+      }
+    }
+    tick()
+    const timer = window.setInterval(tick, 100)
+    document.addEventListener('visibilitychange', cancelWhenHidden)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', cancelWhenHidden)
+    }
+  }, [countdownStartedAt, phase, switching, videoReady])
+
+  const startCountdown = () => {
+    if (!captureReady || countingDown) return
+    setCountdown(10)
+    setCountdownStartedAt(Date.now())
+  }
   const guidance = CAMERA_GUIDANCE[poseFrame.status]
   const mirrored = facingMode === 'user'
 
@@ -806,13 +850,20 @@ function CameraCaptureModal({
               <button
                 type="button"
                 onClick={onSwitchCamera}
-                disabled={switching}
+                disabled={switching || countingDown}
                 className="absolute right-3 top-3 z-[2] flex min-h-10 items-center gap-2 rounded-full border border-white/20 bg-black/62 px-3.5 text-[9px] font-medium uppercase tracking-[0.16em] text-white shadow-lg backdrop-blur-md transition hover:border-white/38 hover:bg-black/78 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60"
                 aria-label={facingMode === 'user' ? 'Switch to rear camera' : 'Switch to front camera'}
               >
                 {switching ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <SwitchCamera className="h-4 w-4" aria-hidden />}
                 {facingMode === 'user' ? 'Front' : 'Rear'}
               </button>
+              {countingDown && (
+                <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center bg-black/15">
+                  <div className="flex h-28 w-28 items-center justify-center rounded-full border border-white/45 bg-black/45 font-serif text-7xl tabular-nums text-white backdrop-blur-sm" role="status" aria-live="polite" aria-atomic="true">
+                    <span className="sr-only">Photo in </span>{countdown}<span className="sr-only"> seconds</span>
+                  </div>
+                </div>
+              )}
               {switching && (
                 <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-black/38 backdrop-blur-[2px]">
                   <div className="flex items-center gap-2 rounded-full border border-white/15 bg-black/70 px-4 py-2 text-[9px] uppercase tracking-[0.18em] text-white/82">
@@ -826,14 +877,12 @@ function CameraCaptureModal({
                   className={`max-w-[92%] rounded-full border px-4 py-2 text-center text-[9px] font-medium uppercase tracking-[0.16em] backdrop-blur-md transition-colors ${guidance.pill}`}
                   aria-live="polite"
                 >
-                  {poseFrame.status === 'ready' && readyProgress < 1
-                    ? `Hold still · ${Math.round(readyProgress * 100)}%`
-                    : guidance.label}
+                  {countingDown ? 'Stand naturally · keep head and feet visible' : guidance.label}
                 </div>
               </div>
             </div>
             <p className="text-center text-[11px] leading-relaxed text-white/45">
-              The guide checks framing, distance and posture on your device. No live camera frames are uploaded.
+              Press the timer, then step back until your head and feet are visible. The lines are a guide — you don’t need to match them exactly. One photo is enough.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button
@@ -845,11 +894,11 @@ function CameraCaptureModal({
               </button>
               <button
                 type="button"
-                onClick={onCapture}
+                onClick={countingDown ? () => setCountdownStartedAt(null) : startCountdown}
                 disabled={!captureReady}
                 className="rounded-full border border-white/20 bg-white/10 px-5 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {captureReady ? 'Capture photo' : 'Align your body'}
+                {countingDown ? 'Cancel timer' : captureReady ? 'Take photo in 10 seconds' : 'Starting camera…'}
               </button>
             </div>
           </div>
