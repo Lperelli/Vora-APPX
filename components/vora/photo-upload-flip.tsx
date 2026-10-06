@@ -5,8 +5,10 @@ import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Camera, Images, Loader2, SwitchCamera, X } from 'lucide-react'
+import { hasLiveVideo, CAMERA_MESSAGES, cameraIssue, captureVideoFrame, requestVideoStream, startCaptureCountdown, stopMediaStream, waitForVideo, type CameraFacingMode, type CameraIssue } from "@/lib/camera"
 import { PhotoGuidanceList } from './photo-guidance'
 import { VORA_UPLOAD_PANEL_MAX } from './vora-layout'
+import { usePhotoDialog } from './use-photo-dialog'
 import {
   detectLivePose,
   preloadLivePoseGuide,
@@ -26,104 +28,10 @@ const FLIP_MS = 600
 /** Time between each card starting its flip (previous card finishes). */
 const FLIP_STAGGER_MS = FLIP_MS
 
-type CameraFacingMode = 'user' | 'environment'
-
-type RequestedVideoStream = {
-  stream: MediaStream
-  facingMode: CameraFacingMode
-}
-
-function inferredFacingMode(stream: MediaStream, fallback: CameraFacingMode): CameraFacingMode {
-  const track = stream.getVideoTracks()[0]
-  const setting = track?.getSettings().facingMode
-  if (setting === 'user' || setting === 'environment') return setting
-
-  const label = track?.label.toLowerCase() || ''
-  if (/back|rear|environment|trasera/.test(label)) return 'environment'
-  if (/front|user|facetime|frontal/.test(label)) return 'user'
-  return fallback
-}
-
-/**
- * Requests the selected lens explicitly. Stopping the current stream before
- * this call is important on iOS: Safari often keeps the front lens otherwise.
- */
-async function requestVideoStream(facingMode: CameraFacingMode): Promise<RequestedVideoStream> {
-  const size = {
-    width: { ideal: 1080 },
-    height: { ideal: 1440 },
-    aspectRatio: { ideal: 0.75 },
-  }
-  let lastError: unknown
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { ...size, facingMode: { exact: facingMode } },
-      audio: false,
-    })
-    const actualFacing = inferredFacingMode(stream, facingMode)
-    if (actualFacing === facingMode) return { stream, facingMode: actualFacing }
-    stream.getTracks().forEach((track) => track.stop())
-  } catch (error) {
-    lastError = error
-  }
-
-  let provisionalStream: MediaStream | null = null
-  try {
-    provisionalStream = await navigator.mediaDevices.getUserMedia({
-      video: { ...size, facingMode: { ideal: facingMode } },
-      audio: false,
-    })
-    const actualFacing = inferredFacingMode(provisionalStream, facingMode)
-    if (actualFacing === facingMode) return { stream: provisionalStream, facingMode: actualFacing }
-
-    if (!navigator.mediaDevices.enumerateDevices) {
-      return { stream: provisionalStream, facingMode: actualFacing }
-    }
-
-    // Some iOS versions ignore `ideal`. Once permission exists, labels and
-    // device ids are available, so select the requested physical lens.
-    let devices: MediaDeviceInfo[]
-    try {
-      devices = await navigator.mediaDevices.enumerateDevices()
-    } catch {
-      return { stream: provisionalStream, facingMode: actualFacing }
-    }
-    const cameras = devices.filter((device) => device.kind === 'videoinput')
-    const matcher = facingMode === 'environment'
-      ? /back|rear|environment|trasera/
-      : /front|user|facetime|frontal/
-    const target = cameras.find((device) => matcher.test(device.label.toLowerCase()))
-
-    if (target && target.deviceId !== provisionalStream.getVideoTracks()[0]?.getSettings().deviceId) {
-      provisionalStream.getTracks().forEach((track) => track.stop())
-      provisionalStream = null
-      const selected = await navigator.mediaDevices.getUserMedia({
-        video: { ...size, deviceId: { exact: target.deviceId } },
-        audio: false,
-      })
-      return { stream: selected, facingMode: inferredFacingMode(selected, facingMode) }
-    }
-
-    return { stream: provisionalStream, facingMode: actualFacing }
-  } catch (error) {
-    provisionalStream?.getTracks().forEach((track) => track.stop())
-    lastError = error
-  }
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-    return { stream, facingMode: inferredFacingMode(stream, facingMode) }
-  } catch (error) {
-    lastError = error
-  }
-
-  throw lastError instanceof Error ? lastError : new Error('Camera unavailable')
-}
-
 interface PhotoUploadFlipProps {
   slots: PhotoSlotsState
   onSlotsChange: Dispatch<SetStateAction<PhotoSlotsState>>
+  onUseMeasurements: () => void
 }
 
 /**
@@ -133,14 +41,17 @@ interface PhotoUploadFlipProps {
  */
 type CameraModalPhase = 'idle' | 'loading' | 'preview' | 'error'
 
-export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) {
+export function PhotoUploadFlip({ slots, onSlotsChange, onUseMeasurements }: PhotoUploadFlipProps) {
   const prefersReducedMotion = useReducedMotion()
   const fileRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const cameraStreamRef = useRef<MediaStream | null>(null)
   const cameraSessionRef = useRef(0)
+  const cameraAbortRef = useRef<AbortController | null>(null)
   const capturePendingRef = useRef(false)
   const scheduleIdRef = useRef(0)
+  const uploadTimersRef = useRef<number[]>([])
+  const previewUrlsRef = useRef(new Set<string>())
   const [mounted, setMounted] = useState(false)
   const [guidanceOpen, setGuidanceOpen] = useState(true)
   const [sourceOpen, setSourceOpen] = useState(false)
@@ -148,6 +59,11 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const [cameraFacing, setCameraFacing] = useState<CameraFacingMode>('environment')
   const [cameraSwitching, setCameraSwitching] = useState(false)
+  const [videoReady, setVideoReady] = useState(false)
+  const [cameraError, setCameraError] = useState<CameraIssue>('unsupported')
+  const [captureError, setCaptureError] = useState(false)
+  const [capturing, setCapturing] = useState(false)
+  const [canSwitch, setCanSwitch] = useState(true)
 
   const emptyCount = slots.filter((s) => s === null).length
 
@@ -157,10 +73,14 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
 
   const stopCameraStream = useCallback(() => {
     cameraSessionRef.current += 1
+    cameraAbortRef.current?.abort()
+    cameraAbortRef.current = null
     capturePendingRef.current = false
-    cameraStreamRef.current?.getTracks().forEach((track) => track.stop())
+    stopMediaStream(cameraStreamRef.current)
     cameraStreamRef.current = null
     setCameraStream(null)
+    setVideoReady(false)
+    setCapturing(false)
     const v = videoRef.current
     if (v) v.srcObject = null
   }, [])
@@ -172,13 +92,80 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
   useEffect(() => {
     const v = videoRef.current
     if (!cameraStream || !v) return
-    v.srcObject = cameraStream
-    const play = v.play()
-    void play.catch(() => {})
+    const session = cameraSessionRef.current
+    const controller = new AbortController()
+    setVideoReady(false)
+    void waitForVideo(v, cameraStream, controller.signal).then(() => {
+      if (session === cameraSessionRef.current) setVideoReady(true)
+    }).catch(() => {
+      if (controller.signal.aborted || session !== cameraSessionRef.current) return
+      setCameraError('preview')
+      stopCameraStream()
+      setCameraPhase('error')
+    })
+    const ended = () => {
+      if (session !== cameraSessionRef.current) return
+      setCameraError('busy')
+      stopCameraStream()
+      setCameraPhase('error')
+    }
+    const tracks = cameraStream.getVideoTracks()
+    let mutedTimer: ReturnType<typeof setTimeout> | undefined
+    const muted = () => {
+      if (session !== cameraSessionRef.current) return
+      setVideoReady(false)
+      clearTimeout(mutedTimer)
+      mutedTimer = setTimeout(ended, 6000)
+    }
+    const unmuted = () => {
+      clearTimeout(mutedTimer)
+      if (session === cameraSessionRef.current && hasLiveVideo(cameraStream) && v.readyState >= 2) setVideoReady(true)
+    }
+    tracks.forEach(track => {
+      track.addEventListener('ended', ended)
+      track.addEventListener('mute', muted)
+      track.addEventListener('unmute', unmuted)
+    })
     return () => {
+      controller.abort()
+      clearTimeout(mutedTimer)
+      tracks.forEach(track => {
+        track.removeEventListener('ended', ended)
+        track.removeEventListener('mute', muted)
+        track.removeEventListener('unmute', unmuted)
+      })
       v.srcObject = null
     }
-  }, [cameraStream])
+  }, [cameraStream, stopCameraStream])
+
+  useEffect(() => {
+    if (cameraPhase !== 'loading' && cameraPhase !== 'preview') return
+    const pause = () => {
+      if (!document.hidden) return
+      stopCameraStream()
+      setCameraSwitching(false)
+      setCameraError('inactive')
+      setCameraPhase('error')
+    }
+    const leave = () => {
+      stopCameraStream()
+      setCameraSwitching(false)
+      setCameraError('inactive')
+      setCameraPhase('error')
+    }
+    document.addEventListener('visibilitychange', pause)
+    window.addEventListener('pagehide', leave)
+    return () => {
+      document.removeEventListener('visibilitychange', pause)
+      window.removeEventListener('pagehide', leave)
+    }
+  }, [cameraPhase, stopCameraStream])
+
+  useEffect(() => () => {
+    scheduleIdRef.current += 1
+    uploadTimersRef.current.forEach(clearTimeout)
+    previewUrlsRef.current.forEach(url => URL.revokeObjectURL(url))
+  }, [])
 
   const scheduleAddFiles = useCallback(
     (picked: File[]) => {
@@ -187,25 +174,34 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
       if (toAdd.length === 0) return
 
       const runId = ++scheduleIdRef.current
-
+      uploadTimersRef.current.forEach(clearTimeout)
+      uploadTimersRef.current = []
+      const makeSlot = (file: File) => {
+        const preview = URL.createObjectURL(file)
+        previewUrlsRef.current.add(preview)
+        return { file, preview }
+      }
       const fillNext = (file: File) => {
+        if (scheduleIdRef.current !== runId) return
+        const slot = makeSlot(file)
         onSlotsChange((prev) => {
           if (scheduleIdRef.current !== runId) return prev
           const j = prev.findIndex((s) => s === null)
           if (j === -1) return prev
           const next: PhotoSlotsState = [prev[0], prev[1], prev[2]]
-          next[j] = { file, preview: URL.createObjectURL(file) }
+          next[j] = slot
           return next
         })
       }
 
       if (prefersReducedMotion) {
+        const additions = toAdd.map(makeSlot)
         onSlotsChange((prev) => {
           const next: PhotoSlotsState = [prev[0], prev[1], prev[2]]
           let fi = 0
           for (let i = 0; i < 3 && fi < toAdd.length; i++) {
             if (next[i] === null) {
-              next[i] = { file: toAdd[fi], preview: URL.createObjectURL(toAdd[fi]) }
+              next[i] = additions[fi]
               fi++
             }
           }
@@ -216,14 +212,14 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
       }
 
       toAdd.forEach((file, idx) => {
-        window.setTimeout(() => fillNext(file), idx * FLIP_STAGGER_MS)
+        uploadTimersRef.current.push(window.setTimeout(() => fillNext(file), idx * FLIP_STAGGER_MS))
       })
 
-      window.setTimeout(() => {
+      uploadTimersRef.current.push(window.setTimeout(() => {
         if (scheduleIdRef.current === runId) {
           if (fileRef.current) fileRef.current.value = ''
         }
-      }, (toAdd.length - 1) * FLIP_STAGGER_MS + 80)
+      }, (toAdd.length - 1) * FLIP_STAGGER_MS + 80))
     },
     [emptyCount, onSlotsChange, prefersReducedMotion]
   )
@@ -241,47 +237,50 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
     stopCameraStream()
     setCameraSwitching(false)
     setCameraPhase('idle')
+    setCaptureError(false)
   }, [stopCameraStream])
 
-  const captureFromCamera = useCallback(() => {
+  const captureFromCamera = useCallback(async () => {
     const v = videoRef.current
-    if (!v || v.videoWidth === 0 || v.readyState < 2 || !cameraStreamRef.current || capturePendingRef.current) return
+    if (!v || v.videoWidth === 0 || v.readyState < 2 || !hasLiveVideo(cameraStreamRef.current) || capturePendingRef.current) return
     const cameraSession = cameraSessionRef.current
-    const w = v.videoWidth
-    const h = v.videoHeight
-    const canvas = document.createElement('canvas')
-    canvas.width = w
-    canvas.height = h
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.drawImage(v, 0, 0, w, h)
+    const signal = cameraAbortRef.current?.signal
+    if (!signal) return
     capturePendingRef.current = true
-    canvas.toBlob(
-      (blob) => {
-        if (cameraSession !== cameraSessionRef.current) return
+    setCapturing(true)
+    setCaptureError(false)
+    try {
+      const blob = await captureVideoFrame(v, signal)
+      if (cameraSession !== cameraSessionRef.current) return
+      const file = new File([blob], `vora-camera-${Date.now()}.jpg`, { type: 'image/jpeg' })
+      scheduleAddFiles([file])
+      closeCameraModal()
+    } catch {
+      if (cameraSession === cameraSessionRef.current) setCaptureError(true)
+    } finally {
+      if (cameraSession === cameraSessionRef.current) {
         capturePendingRef.current = false
-        if (!blob) return
-        const file = new File([blob], `vora-camera-${Date.now()}.jpg`, { type: 'image/jpeg' })
-        scheduleAddFiles([file])
-        closeCameraModal()
-      },
-      'image/jpeg',
-      0.92
-    )
+        setCapturing(false)
+      }
+    }
   }, [scheduleAddFiles, closeCameraModal])
 
   const startCamera = useCallback(async (facingMode: CameraFacingMode, switching = false) => {
     if (emptyCount === 0) return
     if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setCameraError('unsupported')
       setCameraPhase('error')
       return
     }
     stopCameraStream()
     const cameraSession = cameraSessionRef.current
+    const controller = new AbortController()
+    cameraAbortRef.current = controller
     setCameraSwitching(switching)
-    if (!switching) setCameraPhase('loading')
+    setCaptureError(false)
+    setCameraPhase('loading')
     try {
-      const requested = await requestVideoStream(facingMode)
+      const requested = await requestVideoStream(facingMode, controller.signal)
       if (cameraSession !== cameraSessionRef.current) {
         requested.stream.getTracks().forEach((track) => track.stop())
         return
@@ -290,8 +289,14 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
       setCameraStream(requested.stream)
       setCameraFacing(requested.facingMode)
       setCameraPhase('preview')
-    } catch {
-      if (cameraSession === cameraSessionRef.current) setCameraPhase('error')
+      void navigator.mediaDevices.enumerateDevices?.().then(devices => {
+        if (cameraSession === cameraSessionRef.current) setCanSwitch(devices.filter(device => device.kind === 'videoinput').length > 1)
+      }).catch(() => {})
+    } catch (error) {
+      if (cameraSession === cameraSessionRef.current) {
+        setCameraError(cameraIssue(error))
+        setCameraPhase('error')
+      }
     } finally {
       if (cameraSession === cameraSessionRef.current) setCameraSwitching(false)
     }
@@ -352,6 +357,11 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
         videoRef={videoRef}
         facingMode={cameraFacing}
         switching={cameraSwitching}
+        videoReady={videoReady}
+        error={cameraError}
+        capturing={capturing}
+        captureError={captureError}
+        canSwitch={canSwitch}
         onClose={closeCameraModal}
         onCapture={captureFromCamera}
         onSwitchCamera={() => void switchCamera()}
@@ -360,6 +370,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
           openGallery()
           closeCameraModal()
         }}
+        onUseMeasurements={() => { closeCameraModal(); onUseMeasurements() }}
       />,
       document.body
     )
@@ -461,10 +472,10 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
                     key={`rm-${i}`}
                     onClick={() => setSourceOpen(true)}
                     className="group flex aspect-[3/4] min-w-0 items-center justify-center rounded-[4px] border border-dashed border-white/32 transition hover:border-white/60 hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55"
-                    aria-label={`Upload photo ${i + 1}`}
+                    aria-label={i === 0 ? 'Add your full-length photo' : `Add optional photo ${i + 1}`}
                   >
                     <span className="px-1 text-center text-[8px] font-medium tracking-[0.18em] text-white/60 transition group-hover:text-white/85 sm:text-[9px]">
-                      BODY {i + 1}
+                      {i === 0 ? 'YOUR PHOTO' : 'OPTIONAL'}
                     </span>
                   </button>
                 )
@@ -524,22 +535,17 @@ function PhotoGuidanceModal({
   onCamera: () => void
   onGallery: () => void
 }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  const dialogRef = usePhotoDialog(onClose)
 
   return (
     <div
       className="fixed inset-0 z-[320] flex items-center justify-center bg-black/82 p-4 backdrop-blur-md"
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="photo-guidance-title"
     >
-      <button type="button" className="absolute inset-0 cursor-default" aria-label="Close instructions" onClick={onClose} />
+      <button type="button" className="absolute inset-0 cursor-default" tabIndex={-1} aria-label="Close instructions" onClick={onClose} />
       <motion.div
         className="relative z-[1] w-full max-w-[430px] overflow-hidden rounded-[20px] bg-[oklch(0.965_0.006_75)] px-6 py-7 text-black shadow-[0_30px_100px_-28px_rgba(0,0,0,0.95)] sm:px-9 sm:py-9"
         initial={{ opacity: 0, y: 18, scale: 0.98 }}
@@ -604,22 +610,17 @@ function PhotoSourceModal({
   onCamera: () => void
   onGallery: () => void
 }) {
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  const dialogRef = usePhotoDialog(onClose)
 
   return (
     <div
       className="fixed inset-0 z-[310] flex items-end justify-center bg-black/78 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:items-center sm:p-4"
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="photo-source-title"
     >
-      <button type="button" className="absolute inset-0 cursor-default" aria-label="Close photo options" onClick={onClose} />
+      <button type="button" className="absolute inset-0 cursor-default" tabIndex={-1} aria-label="Close photo options" onClick={onClose} />
       <motion.div
         className="relative z-[1] w-full max-w-[430px] overflow-hidden rounded-[20px] border border-white/12 bg-[oklch(0.125_0_0)] p-4 shadow-[0_28px_90px_-25px_rgba(0,0,0,0.95)] sm:p-5"
         initial={{ opacity: 0, y: 24, scale: 0.985 }}
@@ -682,39 +683,61 @@ function CameraCaptureModal({
   videoRef,
   facingMode,
   switching,
+  videoReady,
+  error,
+  capturing,
+  captureError,
+  canSwitch,
   onClose,
   onCapture,
   onSwitchCamera,
   onRetry,
   onOpenGallery,
+  onUseMeasurements,
 }: {
   phase: Exclude<CameraModalPhase, 'idle'>
   videoRef: React.RefObject<HTMLVideoElement | null>
   facingMode: CameraFacingMode
   switching: boolean
+  videoReady: boolean
+  error: CameraIssue
+  capturing: boolean
+  captureError: boolean
+  canSwitch: boolean
   onClose: () => void
-  onCapture: () => void
+  onCapture: () => Promise<void>
   onSwitchCamera: () => void
   onRetry: () => void
   onOpenGallery: () => void
+  onUseMeasurements: () => void
 }) {
-  const [videoReady, setVideoReady] = useState(false)
   const [poseFrame, setPoseFrame] = useState<LivePoseFrame>({ status: 'loading', points: [], alignment: 0 })
+  const [frameSize, setFrameSize] = useState({ width: 320, height: 520 })
+  const [showGuide, setShowGuide] = useState(true)
+  const prefersReducedMotion = useReducedMotion()
   const [countdownStartedAt, setCountdownStartedAt] = useState<number | null>(null)
   const [countdown, setCountdown] = useState(10)
   const captureCallbackRef = useRef(onCapture)
   captureCallbackRef.current = onCapture
 
   useEffect(() => {
-    if (phase !== 'preview') {
-      setVideoReady(false)
+    if (phase !== 'preview' || switching || !videoReady) {
       setPoseFrame({ status: 'loading', points: [], alignment: 0 })
       setCountdownStartedAt(null)
     }
-  }, [phase, facingMode, switching])
+  }, [phase, facingMode, switching, videoReady])
 
   useEffect(() => {
-    if (phase !== 'preview' || !videoReady) return
+    const video = videoRef.current
+    if (!video || !videoReady) return
+    const updateSize = () => setFrameSize({ width: video.videoWidth || 320, height: video.videoHeight || 520 })
+    updateSize()
+    video.addEventListener('resize', updateSize)
+    return () => video.removeEventListener('resize', updateSize)
+  }, [videoReady, videoRef])
+
+  useEffect(() => {
+    if (phase !== 'preview' || !videoReady || switching || capturing || countdownStartedAt !== null || !showGuide) return
     const video = videoRef.current
     if (!video) return
 
@@ -722,26 +745,36 @@ function CameraCaptureModal({
     let animationFrame = 0
     let lastInference = 0
     let inferenceRunning = false
+    let lastVideoTime = -1
+    let guideAvailable = true
 
     void preloadLivePoseGuide().catch(() => {
+      guideAvailable = false
       if (active) setPoseFrame({ status: 'unavailable', points: [], alignment: 0 })
     })
 
     const update = (now: number) => {
       if (!active) return
-      if (video.readyState >= 2 && now - lastInference >= 90 && !inferenceRunning) {
+      // Five new frames per second is sufficient for framing. Pause during the timer.
+      if (guideAvailable && !document.hidden && video.readyState >= 2 && video.currentTime !== lastVideoTime && now - lastInference >= 200 && !inferenceRunning) {
         lastInference = now
+        lastVideoTime = video.currentTime
         inferenceRunning = true
         void detectLivePose(video, now)
           .then((frame) => {
             if (!active) return
             setPoseFrame(frame)
+            if (frame.status === 'unavailable') guideAvailable = false
+          })
+          .catch(() => {
+            guideAvailable = false
+            if (active) setPoseFrame({ status: 'unavailable', points: [], alignment: 0 })
           })
           .finally(() => {
             inferenceRunning = false
           })
       }
-      animationFrame = window.requestAnimationFrame(update)
+      if (guideAvailable) animationFrame = window.requestAnimationFrame(update)
     }
 
     animationFrame = window.requestAnimationFrame(update)
@@ -749,18 +782,12 @@ function CameraCaptureModal({
       active = false
       window.cancelAnimationFrame(animationFrame)
     }
-  }, [phase, videoReady, videoRef])
+  }, [phase, videoReady, videoRef, switching, capturing, countdownStartedAt, showGuide])
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  const dialogRef = usePhotoDialog(onClose)
 
   // Framing is a suggestion: the saved image is checked during analysis.
-  const captureReady = !switching && videoReady
+  const captureReady = !switching && !capturing && videoReady
   const countingDown = countdownStartedAt !== null
 
   useEffect(() => {
@@ -769,27 +796,15 @@ function CameraCaptureModal({
       setCountdownStartedAt(null)
       return
     }
-    let captured = false
-    const cancelWhenHidden = () => {
-      if (document.hidden) setCountdownStartedAt(null)
-    }
-    const tick = () => {
-      if (captured || document.hidden) return
-      const seconds = Math.max(0, Math.ceil((countdownStartedAt + 10_000 - Date.now()) / 1000))
-      setCountdown(seconds)
-      if (seconds === 0) {
-        captured = true
+    return startCaptureCountdown({
+      canCapture: () => !document.hidden && !!videoRef.current && videoRef.current.readyState >= 2 && videoRef.current.videoWidth > 0 && hasLiveVideo(videoRef.current.srcObject as MediaStream | null),
+      onTick: setCountdown,
+      onCancel: () => setCountdownStartedAt(null),
+      onCapture: () => {
         setCountdownStartedAt(null)
-        captureCallbackRef.current()
-      }
-    }
-    tick()
-    const timer = window.setInterval(tick, 100)
-    document.addEventListener('visibilitychange', cancelWhenHidden)
-    return () => {
-      window.clearInterval(timer)
-      document.removeEventListener('visibilitychange', cancelWhenHidden)
-    }
+        void captureCallbackRef.current()
+      },
+    })
   }, [countdownStartedAt, phase, switching, videoReady])
 
   const startCountdown = () => {
@@ -797,12 +812,13 @@ function CameraCaptureModal({
     setCountdown(10)
     setCountdownStartedAt(Date.now())
   }
-  const guidance = CAMERA_GUIDANCE[poseFrame.status]
+  const guidance = CAMERA_GUIDANCE[showGuide ? poseFrame.status : 'unavailable']
   const mirrored = facingMode === 'user'
 
   return (
     <div
-      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/88 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/88 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm"
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="vora-camera-title"
@@ -810,10 +826,11 @@ function CameraCaptureModal({
       <button
         type="button"
         className="absolute inset-0 cursor-default"
+        tabIndex={-1}
         aria-label="Close camera"
         onClick={onClose}
       />
-      <div className="relative z-[1] w-full max-w-md overflow-hidden rounded-[20px] border border-white/12 bg-[oklch(0.12_0_0)] p-4 shadow-[0_32px_80px_-20px_rgba(0,0,0,0.95)] sm:p-5">
+      <div className="relative z-[1] max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-[20px] border border-white/12 bg-[oklch(0.12_0_0)] p-4 shadow-[0_32px_80px_-20px_rgba(0,0,0,0.95)] sm:p-5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <h2 id="vora-camera-title" className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/90">
             Camera
@@ -831,32 +848,34 @@ function CameraCaptureModal({
         {phase === 'loading' && (
           <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 py-10">
             <Loader2 className="h-10 w-10 animate-spin text-white/75" aria-hidden />
-            <p className="text-center text-xs text-white/45">Starting camera…</p>
+            <p className="text-center text-xs text-white/65" role="status">{switching ? 'Switching camera…' : 'Starting camera…'}</p>
+            <p className="max-w-xs text-center text-xs leading-relaxed text-white/50">Allow camera access if your browser asks. You can also use an existing photo.</p>
+            <button type="button" onClick={onOpenGallery} className="min-h-11 text-xs text-white underline underline-offset-4">Choose from photo library</button>
           </div>
         )}
 
         {phase === 'preview' && (
           <div className="space-y-4">
-            <div className="relative mx-auto h-[min(62dvh,520px)] w-full overflow-hidden rounded-[4px] bg-black ring-1 ring-white/10">
+            <div className="relative mx-auto h-[min(50dvh,460px)] w-full overflow-hidden rounded-[4px] bg-black ring-1 ring-white/10">
               <video
                 ref={videoRef}
-                className={`absolute inset-0 h-full w-full object-cover ${mirrored ? '-scale-x-100' : ''}`}
+                className={`absolute inset-0 h-full w-full object-contain ${mirrored ? '-scale-x-100' : ''}`}
                 muted
                 playsInline
                 autoPlay
-                onLoadedData={() => setVideoReady(true)}
               />
-              <BodyFramingGuide status={poseFrame.status} points={poseFrame.points} mirrored={mirrored} />
-              <button
+              {showGuide && videoReady && <BodyFramingGuide status={poseFrame.status} points={countingDown ? [] : poseFrame.points} mirrored={mirrored} frameSize={frameSize} reducedMotion={!!prefersReducedMotion} />}
+              {canSwitch && <button
                 type="button"
                 onClick={onSwitchCamera}
-                disabled={switching || countingDown}
+                disabled={switching || countingDown || capturing}
                 className="absolute right-3 top-3 z-[2] flex min-h-10 items-center gap-2 rounded-full border border-white/20 bg-black/62 px-3.5 text-[9px] font-medium uppercase tracking-[0.16em] text-white shadow-lg backdrop-blur-md transition hover:border-white/38 hover:bg-black/78 active:scale-[0.97] disabled:cursor-wait disabled:opacity-60"
                 aria-label={facingMode === 'user' ? 'Switch to rear camera' : 'Switch to front camera'}
               >
                 {switching ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <SwitchCamera className="h-4 w-4" aria-hidden />}
                 {facingMode === 'user' ? 'Front' : 'Rear'}
-              </button>
+              </button>}
+              {(!videoReady || capturing) && <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center bg-black/40"><span role="status" className="rounded-full bg-black/75 px-4 py-3 text-xs text-white">{capturing ? 'Saving photo…' : 'Waiting for live video…'}</span></div>}
               {countingDown && (
                 <div className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center bg-black/15">
                   <div className="flex h-28 w-28 items-center justify-center rounded-full border border-white/45 bg-black/45 font-serif text-7xl tabular-nums text-white backdrop-blur-sm" role="status" aria-live="polite" aria-atomic="true">
@@ -881,9 +900,11 @@ function CameraCaptureModal({
                 </div>
               </div>
             </div>
-            <p className="text-center text-[11px] leading-relaxed text-white/45">
+            <p className="text-center text-[12px] leading-relaxed text-white/65">
               Press the timer, then step back until your head and feet are visible. The lines are a guide — you don’t need to match them exactly. One photo is enough.
             </p>
+            <button type="button" aria-pressed={showGuide} onClick={() => setShowGuide(value => !value)} disabled={countingDown || capturing} className="mx-auto block min-h-11 text-[11px] text-white/70 underline underline-offset-4">{showGuide ? 'Hide framing guide' : 'Show framing guide'}</button>
+            {captureError && <p role="alert" className="text-center text-xs leading-relaxed text-rose-200">{CAMERA_MESSAGES.capture}</p>}
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button
                 type="button"
@@ -898,7 +919,7 @@ function CameraCaptureModal({
                 disabled={!captureReady}
                 className="rounded-full border border-white/20 bg-white/10 px-5 py-3 text-[11px] font-medium uppercase tracking-[0.15em] text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {countingDown ? 'Cancel timer' : captureReady ? 'Take photo in 10 seconds' : 'Starting camera…'}
+                {capturing ? 'Saving photo…' : countingDown ? 'Cancel timer' : captureReady ? 'Take photo in 10 seconds' : 'Waiting for live video…'}
               </button>
             </div>
           </div>
@@ -907,8 +928,7 @@ function CameraCaptureModal({
         {phase === 'error' && (
           <div className="space-y-4 py-2">
             <p className="text-center text-sm leading-relaxed text-white/65">
-              We couldn&apos;t open the live camera in this browser (permissions, privacy mode, or missing camera).
-              Choose another way to add a photo:
+              {CAMERA_MESSAGES[error]}
             </p>
             <div className="flex flex-col gap-2">
               <button
@@ -924,6 +944,13 @@ function CameraCaptureModal({
                 className="rounded-full border border-white/12 bg-transparent py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/75 transition hover:border-white/20 hover:text-white"
               >
                 Choose from photo library
+              </button>
+              <button
+                type="button"
+                onClick={onUseMeasurements}
+                className="rounded-full border border-white/12 py-3 text-[11px] font-medium uppercase tracking-[0.12em] text-white/75 transition hover:border-white/25"
+              >
+                Enter measurements instead
               </button>
               <button
                 type="button"
@@ -968,10 +995,14 @@ function BodyFramingGuide({
   status,
   points,
   mirrored,
+  frameSize,
+  reducedMotion,
 }: {
   status: LivePoseStatus
   points: LivePoseFrame['points']
   mirrored: boolean
+  frameSize: { width: number; height: number }
+  reducedMotion: boolean
 }) {
   const guides = [
     { label: 'SHOULDERS', y: 118 },
@@ -985,11 +1016,12 @@ function BodyFramingGuide({
 
   return (
     <svg
-      viewBox="0 0 320 520"
-      preserveAspectRatio="none"
+      viewBox={`0 0 ${frameSize.width} ${frameSize.height}`}
+      preserveAspectRatio="xMidYMid meet"
       className="pointer-events-none absolute inset-0 h-full w-full text-white"
       aria-hidden
     >
+      <g transform={`scale(${frameSize.width / 320} ${frameSize.height / 520})`}>
       <defs>
         <linearGradient id="vora-camera-scan" x1="0" x2="1">
           <stop offset="0" stopColor={liveColor} stopOpacity="0" />
@@ -1053,8 +1085,9 @@ function BodyFramingGuide({
         </g>
       )}
       <rect x="24" y="0" width="272" height="2" fill="url(#vora-camera-scan)" opacity="0.85">
-        <animate attributeName="y" values="34;480;34" dur="3.2s" repeatCount="indefinite" />
+        {!reducedMotion && <animate attributeName="y" values="34;480;34" dur="3.2s" repeatCount="indefinite" />}
       </rect>
+      </g>
     </svg>
   )
 }
@@ -1093,10 +1126,13 @@ function SlotFlipCard({
             WebkitBackfaceVisibility: 'hidden',
             transform: 'rotateY(0deg)',
           }}
-          aria-label={`Upload photo ${bodyIndex}`}
+          tabIndex={flipped ? -1 : 0}
+          aria-hidden={flipped}
+          aria-label={bodyIndex === 1 ? 'Add your full-length photo' : `Add optional photo ${bodyIndex}`}
+
         >
           <span className="px-1 text-center text-[8px] font-medium tracking-[0.2em] text-white/65 transition group-hover:text-white/90 sm:text-[9px]">
-            BODY {bodyIndex}
+            {bodyIndex === 1 ? 'YOUR PHOTO' : 'OPTIONAL'}
           </span>
         </button>
 
