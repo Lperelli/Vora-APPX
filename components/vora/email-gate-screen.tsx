@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
-import { VORA_FLOW_MAX } from './vora-layout'
 import { BUILD_BASE } from '@/lib/base-path'
 import { validLeadEmail } from '@/lib/leads'
 
@@ -56,7 +55,7 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
 
       <div className="flex flex-1 flex-col items-center justify-center px-4 pb-[max(3rem,env(safe-area-inset-bottom))] sm:px-6">
         <motion.div
-          className={`${VORA_FLOW_MAX} max-w-[420px] text-center`}
+          className="mx-auto w-full max-w-[420px] text-center"
           initial={prefersReducedMotion ? false : { opacity: 0, y: 14 }}
           animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
           transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
