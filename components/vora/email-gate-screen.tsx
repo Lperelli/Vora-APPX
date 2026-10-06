@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
@@ -9,24 +9,39 @@ import { BUILD_BASE } from '@/lib/base-path'
 import { validLeadEmail } from '@/lib/leads'
 
 interface EmailGateScreenProps {
-  onSubmit: (email: string) => void
+  onSubmit: (email: string | null) => void
   onBack: () => void
 }
 
-/** Results unlock after the server confirms the lead was saved. */
+/** Ask for an email only when a real destination is configured. */
 export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
   const prefersReducedMotion = useReducedMotion()
   const [email, setEmail] = useState('')
   const [touched, setTouched] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [availability, setAvailability] = useState<'checking' | 'available' | 'unavailable'>('checking')
   const requestId = useRef<string | null>(null)
   const inFlight = useRef(false)
   const valid = validLeadEmail(email.trim())
 
+  useEffect(() => {
+    const controller = new AbortController()
+    let active = true
+    const deadline = setTimeout(() => controller.abort(), 6000)
+    void fetch(`${BUILD_BASE}/api/leads`, { cache: 'no-store', signal: controller.signal })
+      .then(async response => {
+        const result = await response.json()
+        if (active) setAvailability(response.ok && result?.enabled === true ? 'available' : 'unavailable')
+      })
+      .catch(() => { if (active) setAvailability('unavailable') })
+      .finally(() => clearTimeout(deadline))
+    return () => { active = false; clearTimeout(deadline); controller.abort() }
+  }, [])
+
   const submit = async () => {
     setTouched(true)
-    if (!valid || inFlight.current) return
+    if (!valid || inFlight.current || availability !== 'available') return
     inFlight.current = true
     setSaving(true)
     setError(null)
@@ -39,10 +54,11 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
         signal: AbortSignal.timeout(20000),
       })
       const result = await response.json()
+      if (response.status === 503) { setAvailability('unavailable'); return }
       if (!response.ok || result?.saved !== true) throw new Error('Not saved')
       onSubmit(email.trim())
     } catch {
-      setError('We couldn’t save your email. Please try again. Your style profile is still here.')
+      setError('We couldn’t confirm your email was saved. Try again or continue to your results.')
     } finally {
       inFlight.current = false
       setSaving(false)
@@ -65,9 +81,12 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
             Your style profile is ready
           </h2>
           <p className="mb-8 text-[13px] leading-relaxed text-foreground/50">
-            Leave your email with VORA and view your results here. We won&apos;t email your results.
+            {availability === 'available'
+              ? <>Leave your email with VORA and view your results here. We won&apos;t email your results.</>
+              : <>Your results are ready to view here, on your device.</>}
           </p>
 
+          {availability === 'available' ? <>
           <form
             onSubmit={(e) => {
               e.preventDefault()
@@ -103,14 +122,23 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
               whileHover={!valid || prefersReducedMotion ? undefined : { scale: 1.01 }}
               whileTap={!valid || prefersReducedMotion ? undefined : { scale: 0.99 }}
             >
-              {saving ? 'Saving your email…' : 'See my results'}
+              {saving ? 'Saving your email…' : 'Save email & see results'}
             </motion.button>
           </form>
 
           <p id="lead-privacy" className="mt-6 text-[11px] leading-relaxed text-foreground/50">
-            By continuing, you agree that VORA saves your email and registration date in its private Google Sheet. Your photos and measurements stay on your device.{' '}
+            By saving your email, you agree that VORA saves your email and registration date in its private Google Sheet. Your photos and measurements stay on your device.{' '}
             <Link href="/privacy" className="underline underline-offset-4">Privacy notice</Link>
           </p>
+          {error && <button type="button" onClick={() => onSubmit(null)} className="mt-5 min-h-11 text-xs text-foreground/65 underline underline-offset-4">Continue to my results</button>}
+          </> : <>
+            <button type="button" disabled={availability === 'checking'} onClick={() => onSubmit(null)} className="h-[50px] w-full rounded-[10px] bg-foreground text-[11px] uppercase tracking-[0.22em] text-background transition-colors hover:bg-foreground/90 disabled:opacity-40">
+              {availability === 'checking' ? 'Preparing your results…' : 'See my results'}
+            </button>
+            <p role="status" className="mt-6 text-[11px] leading-relaxed text-foreground/50">
+              {availability === 'checking' ? 'Just a moment.' : <>No email is needed. Your photos and measurements stay on your device.{' '}<Link href="/privacy" className="underline underline-offset-4">Privacy notice</Link></>}
+            </p>
+          </>}
         </motion.div>
       </div>
     </div>
