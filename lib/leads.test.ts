@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
-import { createLeadHandler } from './lead-handler'
+import { createLeadHandler, createLeadStatusHandler } from './lead-handler'
 
 const requestId = '136f9ead-9914-40a1-9654-39b33a0a2f00'
 const url = 'https://script.google.com/macros/s/test-deployment/exec'
@@ -12,6 +12,28 @@ function request(body: unknown = { email: ' Test@Example.com ', requestId }, ori
   })
 }
 afterEach(() => vi.restoreAllMocks())
+
+describe('lead availability', () => {
+  it.each([
+    {},
+    { VORA_LEADS_WEBHOOK_URL: url },
+    { ...env, VORA_LEADS_WEBHOOK_URL: 'https://other.example/exec' },
+    { ...env, VORA_LEADS_WEBHOOK_URL: `${url}?token=private` },
+    { ...env, VORA_LEADS_WEBHOOK_URL: 'not-a-url' },
+  ])('keeps the email form disabled without a valid private destination', async settings => {
+    const upstream = vi.fn<typeof fetch>()
+    const response = await createLeadStatusHandler({ env: settings, fetch: upstream })()
+    expect(await response.json()).toEqual({ enabled: false })
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(upstream).not.toHaveBeenCalled()
+  })
+  it('only reveals availability, without returning a secret, destination or lead data', async () => {
+    const upstream = vi.fn<typeof fetch>()
+    const response = await createLeadStatusHandler({ env, fetch: upstream })()
+    expect(await response.json()).toEqual({ enabled: true })
+    expect(upstream).not.toHaveBeenCalled()
+  })
+})
 
 describe('lead registration server', () => {
   it('only confirms a matched saved receipt, normalises email, and sends no profile data', async () => {
