@@ -263,7 +263,6 @@ export default function VoraApp() {
                   if (typeof window !== 'undefined') window.history.back()
                 }}
                 onUploadPhotos={() => goToUpload('intro')}
-                onTakePhoto={() => setStep('camera')}
                 onEnterMeasurements={() => setStep('measurements')}
               />
             )}
@@ -278,7 +277,7 @@ export default function VoraApp() {
             {step === 'camera' && <LiveCameraScreen onSubmit={files => void handleAnalyze(files, 'camera')} onBack={() => setStep('intro')} onUseLibrary={() => goToUpload('intro')} onUseMeasurements={() => setStep('measurements')} />}
 
             {step === 'upload' && (
-              <PhotoUploadScreen files={libraryFiles} onFilesChange={setLibraryFiles} onTakePhoto={() => setStep('camera')} onSubmit={files => void handleAnalyze(files, 'library')} onBack={() => setStep(uploadBackStep)} onUseMeasurements={() => setStep('measurements')} />
+              <PhotoUploadScreen files={libraryFiles} onFilesChange={setLibraryFiles} onTakePhoto={() => setStep('camera')} onSubmit={files => void handleAnalyze(files, 'library')} onBack={() => setStep(uploadBackStep)} />
             )}
 
             {step === 'processing' && (

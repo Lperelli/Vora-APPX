@@ -8,12 +8,13 @@ interface ScreenReturnButtonProps {
   onClick: () => void
   variant?: Variant
   className?: string
+  label?: string
 }
 
 /**
  * Consistent RETURN control (user flow): top-left placement is handled by the parent layout.
  */
-export function ScreenReturnButton({ onClick, variant = 'onTheme', className = '' }: ScreenReturnButtonProps) {
+export function ScreenReturnButton({ onClick, variant = 'onTheme', className = '', label = 'Return' }: ScreenReturnButtonProps) {
   const styles =
     variant === 'onDark'
       ? 'text-white/50 hover:text-white active:text-white/90'
@@ -24,7 +25,7 @@ export function ScreenReturnButton({ onClick, variant = 'onTheme', className = '
       type="button"
       onClick={onClick}
       className={`min-h-[44px] min-w-[44px] sm:min-w-0 flex items-center justify-center sm:justify-start text-left text-[10px] tracking-[0.28em] uppercase transition-colors touch-manipulation ${styles} ${className}`.trim()}
-      aria-label="Return"
+      aria-label={label}
     >
       RETURN
     </button>

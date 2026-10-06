@@ -2,7 +2,7 @@
 
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Camera, ArrowRight, ImagePlus, Ruler } from 'lucide-react'
+import { Camera } from 'lucide-react'
 import {
   hasLiveVideo,
   cameraIssue,
@@ -18,9 +18,7 @@ import {
   type CameraModalPhase,
   type CameraReviewPhoto,
 } from './camera-capture-modal'
-import { VoraLogo } from './vora-logo'
-import { VoraScreenHeader } from './screen-return-button'
-import { CapturePoseIllustration } from './photo-guidance'
+import { FigmaFlowShell, FIGMA_FLOW_BUTTON } from './figma-flow-shell'
 
 export function LiveCameraScreen({
   onSubmit,
@@ -338,87 +336,62 @@ export function LiveCameraScreen({
   }
 
   return (
-    <div className="min-h-dvh bg-[#f3f0e9] text-[#232720]">
-      <div className="px-4 sm:px-8">
-        <VoraScreenHeader
-          onReturn={onBack}
-          variant="onLight"
-          center={<VoraLogo tone="light" />}
-        />
-      </div>
-      <section className="mx-auto grid max-w-5xl gap-8 px-6 py-7 sm:grid-cols-[1fr_0.9fr] sm:items-center sm:gap-16 sm:py-14">
-        <div>
-          <p className="mb-5 text-[10px] uppercase tracking-[0.28em] text-[#62685b]">
-            The fitting room / 01 photo
-          </p>
-          <h1 className="font-serif text-5xl leading-[1.08] tracking-[-0.035em] sm:text-6xl">
-            A little space.
-            <br />
-            <em>Just you.</em>
-          </h1>
-          <p className="mt-5 max-w-sm text-sm leading-7 text-[#65695f]">
-            One new photo is all you need. We’ll help you find your frame, then
-            give you ten seconds to step back.
-          </p>
-          <ol className="my-8 space-y-4 text-sm">
-            {[
-              'Place your phone upright at waist height.',
-              'Face the camera. Keep your head and feet in view.',
-              'Wear fitted clothes, with arms slightly apart.',
-            ].map((text, i) => (
-              <li key={text} className="flex gap-4">
-                <span className="text-[10px] tabular-nums text-[#898d81]">
-                  0{i + 1}
-                </span>
-                <span>{text}</span>
-              </li>
-            ))}
-          </ol>
+    <FigmaFlowShell onReturn={onBack}>
+      <section className="mx-auto w-full max-w-[513px] px-6 pt-8 text-center md:pt-[51px]">
+        <h1 className="text-[10px] font-medium uppercase leading-5 tracking-[2px]">
+          Full Body Glam / One photo
+        </h1>
+        <p className="mt-[18px] text-[14px] leading-[26px] tracking-[-0.3125px]">
+          Take one full-body picture right now. You’ll have 10 seconds to step
+          back and find your position.
+        </p>
+        <ol className="mx-auto mt-6 max-w-[348px] space-y-3 text-left text-[12px] leading-[26px]">
+          {[
+            'Place your camera upright at waist height.',
+            'Face forward, with your head and feet in view.',
+            'Wear fitted clothes and keep your arms slightly apart.',
+          ].map((text, i) => (
+            <li key={text} className="flex gap-3">
+              <span className="text-[#ababab]">0{i + 1}</span>
+              <span>{text}</span>
+            </li>
+          ))}
+        </ol>
+        <div className="mx-auto mt-7 max-w-[348px] space-y-2">
           <button
             onClick={() => void openCamera()}
-            className="flex min-h-14 w-full items-center justify-between rounded-full bg-[#26352b] px-6 text-xs font-medium text-white sm:max-w-sm"
+            className={FIGMA_FLOW_BUTTON}
           >
-            <span className="flex items-center gap-3">
-              <Camera size={17} />
-              Open camera
-            </span>
-            <ArrowRight size={17} />
+            <Camera size={16} />
+            Open camera
           </button>
           <button
             onClick={openNativeCamera}
-            className="mt-3 min-h-11 w-full text-xs text-[#555e50] underline underline-offset-4 sm:max-w-sm"
+            className="min-h-11 text-[11px] text-[#ababab] underline underline-offset-4"
           >
             Use my phone’s camera instead
           </button>
           {nativeError && (
-            <p role="alert" className="mt-3 text-sm text-[#9e392c]">
+            <p role="alert" className="text-[12px] leading-5">
               We couldn’t open that photo. Try taking a JPEG photo.
             </p>
           )}
         </div>
-        <div className="hidden min-h-[480px] items-center justify-center rounded-t-[180px] border border-[#d7dbce] bg-[#e7ebdf] sm:flex">
-          <CapturePoseIllustration className="h-[400px] w-[230px]" />
+        <div className="mt-5 flex flex-wrap justify-center gap-x-5 text-[10px] text-[#ababab]">
+          <button
+            onClick={onUseLibrary}
+            className="min-h-11 underline underline-offset-4"
+          >
+            Use 3 photos from my library
+          </button>
+          <button
+            onClick={onUseMeasurements}
+            className="min-h-11 underline underline-offset-4"
+          >
+            Enter measurements
+          </button>
         </div>
       </section>
-      <div className="mx-auto flex max-w-5xl flex-wrap gap-x-8 gap-y-2 border-t border-[#d8dcd1] px-6 py-6 text-xs text-[#5c6457]">
-        <button
-          onClick={onUseLibrary}
-          className="flex min-h-11 items-center gap-2"
-        >
-          <ImagePlus size={15} />
-          Use 3 photos from my library
-        </button>
-        <button
-          onClick={onUseMeasurements}
-          className="flex min-h-11 items-center gap-2"
-        >
-          <Ruler size={15} />
-          Enter measurements
-        </button>
-        <p className="w-full text-[10px] text-[#767e6b]">
-          Your photo stays on your device.
-        </p>
-      </div>
       <input
         ref={nativeCameraRef}
         type="file"
@@ -469,6 +442,6 @@ export function LiveCameraScreen({
           />,
           document.body
         )}
-    </div>
+    </FigmaFlowShell>
   )
 }

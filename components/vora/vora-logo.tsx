@@ -18,10 +18,12 @@ export function VoraLogo({
   className,
   priority = false,
   tone = 'dark',
+  design = 'standard',
 }: {
   className?: string
   priority?: boolean
   tone?: 'dark' | 'light'
+  design?: 'standard' | 'figma'
 }) {
   const [src, setSrc] = useState(LOGO_WHITE_SRC)
   const isFallback = src === LOGO_DARK_SRC
@@ -29,6 +31,15 @@ export function VoraLogo({
   const onError = useCallback(() => {
     setSrc((s) => (s === LOGO_WHITE_SRC ? LOGO_DARK_SRC : s))
   }, [])
+
+  if (design === 'figma') return (
+    <span className={cn('relative block h-6 w-[101px] shrink-0', className)}>
+      {/* Preserve the exported SVG's native dimensions; scale its Figma instance. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={asset('/figma/vora-wordmark.svg')} alt="Vora" width={70} height={17}
+        style={{ transform: 'scale(1.4428571429, 1.4117647059)', transformOrigin: 'top left' }} />
+    </span>
+  )
 
   return (
     <Image
