@@ -1,37 +1,58 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
 import { VORA_FLOW_MAX } from './vora-layout'
+import { BUILD_BASE } from '@/lib/base-path'
+import { validLeadEmail } from '@/lib/leads'
 
 interface EmailGateScreenProps {
   onSubmit: (email: string) => void
   onBack: () => void
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-/**
- * Native email-capture gate shown right before results (business rule §9).
- * No external mail app — a normal in-page form. The email is captured client
- * side; results unlock on submit.
- */
+/** Results unlock after the server confirms the lead was saved. */
 export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
   const prefersReducedMotion = useReducedMotion()
   const [email, setEmail] = useState('')
   const [touched, setTouched] = useState(false)
-  const valid = EMAIL_RE.test(email.trim())
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const requestId = useRef<string | null>(null)
+  const inFlight = useRef(false)
+  const valid = validLeadEmail(email.trim())
 
-  const submit = () => {
+  const submit = async () => {
     setTouched(true)
-    if (valid) onSubmit(email.trim())
+    if (!valid || inFlight.current) return
+    inFlight.current = true
+    setSaving(true)
+    setError(null)
+    requestId.current ??= crypto.randomUUID()
+    try {
+      const response = await fetch(`${BUILD_BASE}/api/leads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), requestId: requestId.current }),
+        signal: AbortSignal.timeout(20000),
+      })
+      const result = await response.json()
+      if (!response.ok || result?.saved !== true) throw new Error('Not saved')
+      onSubmit(email.trim())
+    } catch {
+      setError('We couldn’t save your email. Please try again. Your style profile is still here.')
+    } finally {
+      inFlight.current = false
+      setSaving(false)
+    }
   }
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background font-sans text-foreground">
-      <VoraScreenHeader onReturn={onBack} variant="onTheme" center={<VoraLogo />} />
+      <VoraScreenHeader onReturn={() => { if (!inFlight.current) onBack() }} variant="onTheme" center={<VoraLogo />} />
 
       <div className="flex flex-1 flex-col items-center justify-center px-4 pb-[max(3rem,env(safe-area-inset-bottom))] sm:px-6">
         <motion.div
@@ -42,10 +63,10 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
         >
           <p className="mb-2.5 text-[10px] uppercase tracking-[0.38em] text-foreground/55">Almost there</p>
           <h2 className="mb-3 text-lg font-semibold tracking-[0.06em] text-foreground sm:text-xl">
-            Share your email to get your results
+            Your style profile is ready
           </h2>
           <p className="mb-8 text-[13px] leading-relaxed text-foreground/50">
-            Your style profile is ready to view here. In this MVP, we don&apos;t store your email or send result emails.
+            Leave your email with VORA and view your results here. We won&apos;t email your results.
           </p>
 
           <form
@@ -59,29 +80,37 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
               type="email"
               inputMode="email"
               autoComplete="email"
+              maxLength={254}
+              required
+              disabled={saving}
               placeholder="you@email.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); requestId.current = null; setError(null) }}
               onBlur={() => setTouched(true)}
               aria-label="Email address"
+              aria-invalid={touched && !valid}
+              aria-describedby="lead-privacy"
               className="h-[50px] w-full rounded-[10px] border border-white/[0.18] bg-white/[0.02] px-4 text-sm text-foreground outline-none transition-[border-color,background-color] duration-300 placeholder:text-foreground/30 focus:border-foreground focus:bg-white/[0.04]"
             />
             {touched && !valid && (
               <p className="px-1 text-[11px] text-rose-300/80">Please enter a valid email.</p>
             )}
+            {error && <p role="alert" className="px-1 text-xs leading-relaxed text-rose-300">{error}</p>}
             <motion.button
               type="submit"
-              disabled={!valid}
+              disabled={!valid || saving}
+              aria-busy={saving}
               className="mt-2 h-[50px] w-full rounded-[10px] bg-foreground text-[11px] uppercase tracking-[0.22em] text-background transition-all duration-300 hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-[0.32]"
               whileHover={!valid || prefersReducedMotion ? undefined : { scale: 1.01 }}
               whileTap={!valid || prefersReducedMotion ? undefined : { scale: 0.99 }}
             >
-              See my results
+              {saving ? 'Saving your email…' : 'See my results'}
             </motion.button>
           </form>
 
-          <p className="mt-6 text-[8px] uppercase tracking-[0.24em] text-foreground/35">
-            Privacy First / Processed Locally, Never Stored
+          <p id="lead-privacy" className="mt-6 text-[11px] leading-relaxed text-foreground/50">
+            By continuing, you agree that VORA saves your email and registration date in its private Google Sheet. Your photos and measurements stay on your device.{' '}
+            <Link href="/privacy" className="underline underline-offset-4">Privacy notice</Link>
           </p>
         </motion.div>
       </div>
