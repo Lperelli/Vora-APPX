@@ -1,5 +1,5 @@
 import type { BodyWidths } from '@/lib/body-classifier'
-import { THRESHOLDS } from '@/lib/body-type-config'
+import { PHOTO_VISIBILITY, THRESHOLDS } from '@/lib/body-type-config'
 import { asset } from '@/lib/base-path'
 
 /**
@@ -62,7 +62,10 @@ async function getLandmarker() {
         // Some browsers / sandboxes lack WebGL — fall back to CPU.
         return PoseLandmarker.createFromOptions(fileset, makeOptions('CPU'))
       }
-    })()
+    })().catch(error => {
+      landmarkerPromise = null
+      throw error
+    })
   }
   return landmarkerPromise
 }
@@ -107,13 +110,22 @@ export async function measureFromImage(file: File | Blob): Promise<PhotoMeasureR
     return { ok: false, widths: null, visibility: 0, reason: 'load_failed' }
   }
 
+  let masks: Array<{ close?: () => void }> = []
   try {
     const result = landmarker.detect(bitmap)
+    masks = result.segmentationMasks || []
     const lm = result.landmarks?.[0]
     if (!lm) return { ok: false, widths: null, visibility: 0, reason: 'no_body' }
 
     const keyPoints = [lm[L_SHOULDER], lm[R_SHOULDER], lm[L_HIP], lm[R_HIP]]
     const visibility = avg(keyPoints.map((p) => p?.visibility ?? 0))
+    if (keyPoints.some(point => !point || !Number.isFinite(point.y))) return { ok: false, widths: null, visibility: 0, reason: 'not_full_body' }
+    if (visibility < PHOTO_VISIBILITY.low) return { ok: false, widths: null, visibility, reason: 'low_visibility' }
+    const nose = lm[0]
+    const ankles = [lm[27], lm[28]]
+    if (!nose || !Number.isFinite(nose.y) || (nose.visibility ?? 0) < 0.4 || nose.y < 0.01 || ankles.some(point => !point || !Number.isFinite(point.y) || point.y > 0.99 || (point.visibility ?? 0) < 0.35)) {
+      return { ok: false, widths: null, visibility, reason: 'not_full_body' }
+    }
 
     const mask = result.segmentationMasks?.[0]
     if (!mask) return { ok: false, widths: null, visibility, reason: 'silhouette_unreadable' }
@@ -130,9 +142,6 @@ export async function measureFromImage(file: File | Blob): Promise<PhotoMeasureR
     const waistW = silhouetteWidth(data, W, H, yWaist)
     const hipW = silhouetteWidth(data, W, H, yHip)
 
-    mask.close?.()
-    bitmap.close()
-
     // Full body must be in frame: shoulders well below the top, hips above the bottom.
     const shoulderNorm = (lm[L_SHOULDER].y + lm[R_SHOULDER].y) / 2
     const hipNorm = (lm[L_HIP].y + lm[R_HIP].y) / 2
@@ -146,7 +155,9 @@ export async function measureFromImage(file: File | Blob): Promise<PhotoMeasureR
 
     return { ok: true, widths: { shoulderW, waistW, hipW, visibility }, visibility }
   } catch {
-    bitmap.close()
     return { ok: false, widths: null, visibility: 0, reason: 'silhouette_unreadable' }
+  } finally {
+    masks.forEach(mask => mask.close?.())
+    bitmap.close()
   }
 }
