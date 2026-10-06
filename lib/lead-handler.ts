@@ -7,6 +7,24 @@ interface LeadDependencies {
   fetch?: typeof fetch
 }
 
+function leadDestination(env: Record<string, string | undefined>): URL | null {
+  if (!env.VORA_LEADS_WEBHOOK_URL || !env.VORA_LEADS_WEBHOOK_SECRET) return null
+  try {
+    const url = new URL(env.VORA_LEADS_WEBHOOK_URL)
+    if (url.origin !== 'https://script.google.com' || !/^\/macros\/s\/[\w-]+\/exec$/.test(url.pathname) || url.search || url.hash) return null
+    return url
+  } catch { return null }
+}
+
+/** Public availability only: never reveal the destination or credentials. */
+export function createLeadStatusHandler(dependencies: LeadDependencies = {}) {
+  return async function GET(): Promise<Response> {
+    return Response.json({ enabled: !!leadDestination(dependencies.env ?? process.env) }, {
+      headers: { 'Cache-Control': 'no-store' },
+    })
+  }
+}
+
 /** Only email and an idempotency key leave the browser. Never accept photo/profile data. */
 export function createLeadHandler(dependencies: LeadDependencies = {}) {
   return async function POST(request: Request): Promise<Response> {
@@ -42,15 +60,10 @@ export function createLeadHandler(dependencies: LeadDependencies = {}) {
       return reply(400, { error: 'Please enter a valid email.' })
     }
 
-    const endpoint = env.VORA_LEADS_WEBHOOK_URL
+    const url = leadDestination(env)
     const token = env.VORA_LEADS_WEBHOOK_SECRET
-    if (!endpoint || !token) return reply(503, { error: 'Email registration is temporarily unavailable.' })
+    if (!url || !token) return reply(503, { error: 'Email registration is temporarily unavailable.' })
     try {
-      const url = new URL(endpoint)
-      // Credentials may only go to the Google Apps Script deployment we configure.
-      if (url.origin !== 'https://script.google.com' || !/^\/macros\/s\/[\w-]+\/exec$/.test(url.pathname) || url.search || url.hash) {
-        return reply(503, { error: 'Email registration is temporarily unavailable.' })
-      }
       const response = await (dependencies.fetch ?? fetch)(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
