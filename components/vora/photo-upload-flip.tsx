@@ -399,7 +399,7 @@ export function PhotoUploadFlip({ slots, onSlotsChange }: PhotoUploadFlipProps) 
   const copyBlock = (
     <>
       <p className="mt-5 text-center text-[10px] font-medium tracking-[0.3em] text-white sm:mt-6 sm:text-[11px]">
-        2–3 FULL-LENGTH PHOTOS
+        ONE FULL-LENGTH PHOTO
       </p>
       <div className="mt-3 space-y-3 px-0.5 text-center text-[13px] leading-relaxed text-white/58 sm:text-sm sm:leading-relaxed">
         <p>
