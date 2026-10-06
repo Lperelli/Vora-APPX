@@ -29,7 +29,7 @@ function RectangleSvg() {
   return (
     <svg viewBox="0 0 60 140" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" className="h-full w-full">
       <path
-        d="M14 8 Q30 6 46 8 L44 68 Q30 72 30 72 Q30 72 16 68 Z M16 76 Q30 72 30 72 Q30 72 44 76 L46 134 Q30 136 14 134 Z"
+        d="M14 8 Q30 6 46 8 L44 68 L16 68 Z M16 76 L44 76 L46 134 Q30 136 14 134 Z"
         className="fill-foreground/[0.06] stroke-foreground/65"
       />
       <line x1="30" y1="4" x2="30" y2="138" stroke="currentColor" strokeWidth="0.5" strokeDasharray="3 5" className="text-foreground/25" />
