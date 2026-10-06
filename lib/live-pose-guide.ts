@@ -40,7 +40,8 @@ function average(values: number[]) {
 }
 
 function visibility(point: { visibility?: number } | undefined) {
-  return point?.visibility ?? 0
+  const value = point?.visibility
+  return value !== undefined && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0
 }
 
 async function getVideoLandmarker(): Promise<PoseLandmarkerVideo> {
@@ -62,7 +63,10 @@ async function getVideoLandmarker(): Promise<PoseLandmarkerVideo> {
       } catch {
         return (await PoseLandmarker.createFromOptions(fileset, options('CPU'))) as PoseLandmarkerVideo
       }
-    })()
+    })().catch(error => {
+      videoLandmarkerPromise = null
+      throw error
+    })
   }
   return videoLandmarkerPromise
 }
@@ -83,8 +87,12 @@ export async function detectLivePose(video: HTMLVideoElement, timestampMs: numbe
     return { status: 'unavailable', points: [], alignment: 0 }
   }
 
-  const landmarks = result.landmarks?.[0]
-  if (!landmarks) return NO_FRAME
+  return assessLivePose(result.landmarks?.[0] || [])
+}
+
+/** Framing hints only; they never decide whether the shutter is available. */
+export function assessLivePose(landmarks: Array<{ x: number; y: number; visibility?: number }>): LivePoseFrame {
+  if (landmarks.length < 29 || landmarks.some(point => !point || !Number.isFinite(point.x) || !Number.isFinite(point.y))) return NO_FRAME
 
   const points = landmarks.map((point) => ({
     x: point.x,
@@ -116,8 +124,8 @@ export async function detectLivePose(video: HTMLVideoElement, timestampMs: numbe
 
   if (topY < 0.025 || bottomY > 0.985) return { status: 'not_full_body', points, alignment: 0.45 }
   if (bodyHeight > 0.91 || shoulderWidth > 0.56) return { status: 'too_close', points, alignment: 0.55 }
-  if (bodyHeight < 0.56) return { status: 'too_far', points, alignment: 0.55 }
-  if (centerOffset > 0.11) return { status: 'off_center', points, alignment: 0.7 }
+  if (bodyHeight < 0.45) return { status: 'too_far', points, alignment: 0.55 }
+  if (centerOffset > 0.18) return { status: 'off_center', points, alignment: 0.7 }
   if (shoulderTilt > 0.055 || hipTilt > 0.06) return { status: 'posture', points, alignment: 0.78 }
 
   const alignment = Math.max(0, Math.min(1, 1 - centerOffset * 2.6 - shoulderTilt - hipTilt))

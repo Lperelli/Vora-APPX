@@ -261,7 +261,7 @@ export default function VoraApp() {
             )}
 
             {step === 'upload' && (
-              <PhotoUploadScreen onSubmit={handleAnalyze} onBack={() => setStep(uploadBackStep)} />
+              <PhotoUploadScreen onSubmit={handleAnalyze} onBack={() => setStep(uploadBackStep)} onUseMeasurements={() => setStep('measurements')} />
             )}
 
             {step === 'processing' && (
