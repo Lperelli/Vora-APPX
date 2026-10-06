@@ -7,6 +7,7 @@ import { VORA_FLOW_MAX } from './vora-layout'
 
 export type PhotoIssue =
   | 'no_body'
+  | 'multiple_bodies'
   | 'not_full_body'
   | 'low_visibility'
   | 'silhouette_unreadable'
@@ -15,6 +16,7 @@ export type PhotoIssue =
 
 const MESSAGES: Record<PhotoIssue, string> = {
   no_body: "We couldn't find a full body in that photo. Try a clear, front-facing, head-to-toe shot.",
+  multiple_bodies: 'There is more than one person in this photo. Take a photo with only you in the frame.',
   not_full_body: 'We need your whole body in frame, head to toe. Step back and try again.',
   low_visibility: 'The photo was a little unclear. Better lighting and fitted clothes help a lot.',
   silhouette_unreadable: "We couldn't read your silhouette. Fitted clothing against a plain background works best.",

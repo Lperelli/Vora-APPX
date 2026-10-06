@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assessLivePose } from './live-pose-guide'
+import { assessLivePose, assessDetectedPoses } from './live-pose-guide'
 
 function pose() {
   const points = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0.95 }))
@@ -12,6 +12,10 @@ function pose() {
   return points
 }
 describe('optional body framing', () => {
+  it('reports multiple people without drawing a misleading body overlay', () => {
+    expect(assessDetectedPoses([pose(), pose()])).toEqual({ status: 'multiple_bodies', points: [], alignment: 0 })
+    expect(assessDetectedPoses([]).status).toBe('no_body')
+  })
   it('allows natural framing without matching rigid lines', () => {
     const points = pose().map(point => ({ ...point, x: point.x + 0.14 }))
     expect(assessLivePose(points).status).toBe('ready')

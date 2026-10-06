@@ -10,6 +10,13 @@ function stream() {
 }
 
 describe('camera lifecycle', () => {
+  it('opens the user-selected physical lens instead of the default wide lens', async () => {
+    const live = stream(); const getUserMedia = vi.fn().mockResolvedValue(live.value)
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } })
+    expect((await requestVideoStream('user', new AbortController().signal, 'normal-lens')).stream).toBe(live.value)
+    expect(getUserMedia).toHaveBeenCalledOnce()
+    expect(getUserMedia).toHaveBeenCalledWith({ audio: false, video: expect.objectContaining({ deviceId: { exact: 'normal-lens' }, frameRate: { ideal: 24, max: 30 } }) })
+  })
   it('times out ignored permission requests and stops a stream that arrives too late', async () => {
     vi.useFakeTimers()
     const live = stream()
