@@ -2,18 +2,7 @@
 
 import Image from 'next/image'
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import {
-  Camera,
-  Check,
-  Images,
-  Loader2,
-  RotateCcw,
-  SwitchCamera,
-  X,
-  ArrowRight,
-  Circle,
-  ScanLine,
-} from 'lucide-react'
+import { Camera, Loader2, SwitchCamera } from 'lucide-react'
 import { useReducedMotion } from 'framer-motion'
 import {
   CAMERA_MESSAGES,
@@ -28,7 +17,11 @@ import {
   type LivePoseFrame,
   type LivePoseStatus,
 } from '@/lib/live-pose-guide'
-import { CapturePoseIllustration } from './photo-guidance'
+import {
+  FigmaFlowHeader,
+  FigmaPrivacyFooter,
+  FIGMA_FLOW_BUTTON,
+} from './figma-flow-shell'
 import { usePhotoDialog } from './use-photo-dialog'
 
 export type CameraModalPhase =
@@ -235,26 +228,12 @@ export function CameraCaptureModal({
 
   const counting = timerStarted !== null
   const ready = videoReady && !switching && !capturing
+  const frame = phase === 'review' && reviewPhoto ? reviewPhoto : size
   const hasBody =
     !['low_visibility', 'no_body', 'multiple_bodies'].includes(pose.status) &&
     [11, 12, 23, 24].every((index) => pose.points[index]?.visibility >= 0.6)
-  const framed = [
-    'ready',
-    'hold_still',
-    'posture',
-    'not_front_facing',
-    'arms_obscured',
-  ].includes(pose.status)
-  const postureClear = ['ready', 'hold_still'].includes(pose.status)
-  const checks = [
-    { label: 'Head to toe in frame', ok: framed },
-    { label: 'Facing forward, arms relaxed', ok: postureClear },
-    { label: 'Holding a steady position', ok: pose.status === 'ready' },
-  ]
-  const primary =
-    'flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-[#263b2c] px-6 text-xs font-medium text-white transition hover:bg-[#354f3b] disabled:cursor-wait disabled:opacity-35'
   const secondary =
-    'flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#ccd2c4] px-5 text-[11px] text-[#4e5b44] hover:bg-[#e6ebdf]'
+    'min-h-11 text-[11px] text-[#ababab] underline underline-offset-4 hover:text-white'
 
   return (
     <div
@@ -262,72 +241,28 @@ export function CameraCaptureModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="vora-camera-title"
-      className="fixed inset-0 z-[300] overflow-y-auto bg-[#f3f0e9] text-[#263025]"
+      className="fixed inset-0 z-[300] overflow-y-auto bg-[#101010] font-sans text-[#d1d5dc]"
     >
-      <div className="grid min-h-dvh grid-rows-[76px_1fr] sm:grid-cols-[290px_minmax(0,1fr)] lg:grid-cols-[340px_minmax(0,1fr)]">
-        <header className="flex items-center justify-between border-b border-[#d7dccf] px-5 sm:col-span-2 sm:px-8">
-          <div>
-            <p className="text-[9px] uppercase tracking-[.28em] text-[#77816b]">
-              Vora / The fitting room
-            </p>
-            <h2 id="vora-camera-title" className="mt-1 font-serif text-2xl">
-              {phase === 'review' ? 'Make it yours.' : 'Find your frame.'}
-            </h2>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="hidden text-[10px] uppercase tracking-widest text-[#77816b] sm:block">
-              One photo, then your profile
-            </span>
-            <button
-              onClick={onClose}
-              aria-label="Close camera"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-[#ccd2c4]"
-            >
-              <X size={17} />
-            </button>
-          </div>
-        </header>
-        <aside className="hidden flex-col justify-between border-r border-[#d7dccf] px-7 py-9 sm:flex">
-          <div>
-            <p className="text-[10px] uppercase tracking-[.22em] text-[#859177]">
-              {phase === 'review' ? '02 / Review' : '01 / Capture'}
-            </p>
-            <h3 className="mt-4 font-serif text-[37px] leading-[1.05] tracking-tight">
-              A single photo.
-              <br />
-              <em>Naturally you.</em>
-            </h3>
-            <p className="mt-4 text-xs leading-6 text-[#687360]">
-              Place your camera upright at waist height. Stand back until your
-              whole body is visible, with your arms slightly apart.
-            </p>
-          </div>
-          <CapturePoseIllustration className="mx-auto my-5 h-[min(33dvh,250px)] w-36" />
-          <div className="space-y-4">
-            {phase === 'preview' && checks.map(({ label, ok }) => (
-              <div
-                key={label}
-                className={`flex items-center gap-3 text-[11px] ${ok ? 'text-[#3c6146]' : 'text-[#7d8871]'}`}
-              >
-                {ok ? (
-                  <Check size={15} />
-                ) : (
-                  <Circle size={12} strokeWidth={1} />
-                )}
-                <span>{label}</span>
-              </div>
-            ))}
-            <p className="border-t border-[#d7dccf] pt-4 text-[10px] leading-5 text-[#79856e]">
-              {phase === 'review'
-                ? 'Your camera is now off. This photo stays on your device.'
-                : 'The guide helps with framing. You can take your photo whenever you’re ready.'}
-            </p>
-          </div>
-        </aside>
-        <section className="flex h-[calc(100dvh-76px)] min-h-[470px] min-w-0 flex-col">
+      <div className="flex min-h-dvh flex-col">
+        <FigmaFlowHeader onReturn={onClose} returnLabel="Close camera" />
+        <section className="mx-auto flex w-full max-w-[760px] flex-1 flex-col items-center px-5 pb-5">
+          <h2
+            id="vora-camera-title"
+            className="mb-5 text-center text-[10px] font-medium uppercase leading-5 tracking-[2px]"
+          >
+            {phase === 'review'
+              ? 'Final review / One photo'
+              : 'Full body / One photo'}
+          </h2>
           {phase === 'preview' || (phase === 'review' && reviewPhoto) ? (
             <>
-              <div className="relative min-h-[220px] flex-1 overflow-hidden bg-[#181d17]">
+              <div
+                className="relative shrink-0 overflow-hidden rounded-[4px] border border-white/15 bg-[#080808]"
+                style={{
+                  width: `min(100%, calc(clamp(220px, calc(100dvh - 360px), 620px) * ${frame.width / frame.height}))`,
+                  aspectRatio: `${frame.width} / ${frame.height}`,
+                }}
+              >
                 {phase === 'preview' ? (
                   <video
                     ref={videoRef}
@@ -342,7 +277,7 @@ export function CameraCaptureModal({
                     alt="Your captured full-length photo"
                     fill
                     unoptimized
-                    sizes="(max-width:640px) 100vw, 75vw"
+                    sizes="(max-width:640px) 90vw, 600px"
                     className="object-contain"
                   />
                 )}
@@ -354,26 +289,22 @@ export function CameraCaptureModal({
                   />
                 )}
                 {phase === 'preview' && (
-                  <div className="absolute inset-x-4 top-4 flex justify-center">
-                    <div
+                  <div className="absolute inset-x-3 top-3 flex justify-center">
+                    <p
                       role="status"
                       aria-live="polite"
-                      className="flex max-w-full items-center gap-2.5 rounded-full border border-white/15 bg-[#142015]/80 px-4 py-2.5 text-center text-[11px] leading-4 text-white backdrop-blur-md"
+                      className="rounded-full border border-white/20 bg-black/70 px-3 py-2 text-center text-[10px] leading-4 text-white backdrop-blur-sm"
                     >
-                      <span
-                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${pose.status === 'ready' ? 'bg-[#bbdba9]' : 'bg-white/60'}`}
-                      />
                       {!videoReady
                         ? 'Starting live view…'
                         : showGuide
                           ? GUIDE_COPY[pose.status]
                           : 'Tracking hidden · take your photo when ready'}
-                    </div>
+                    </p>
                   </div>
                 )}
                 {phase === 'preview' && showGuide && hasBody && (
-                  <span className="absolute bottom-4 left-4 flex items-center gap-2 rounded-full bg-black/50 px-3 py-2 text-[9px] uppercase tracking-[.14em] text-white/80">
-                    <ScanLine size={13} />
+                  <span className="absolute bottom-3 left-3 rounded-full bg-black/70 px-3 py-2 text-[8px] uppercase tracking-[1.5px] text-white">
                     Body detected
                   </span>
                 )}
@@ -386,24 +317,24 @@ export function CameraCaptureModal({
                         ? 'Switch to rear camera'
                         : 'Switch to front camera'
                     }
-                    className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white disabled:opacity-40"
+                    className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-black/70 text-white disabled:opacity-40"
                   >
                     <SwitchCamera size={18} />
                   </button>
                 )}
                 {counting && (
-                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-black/15">
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-black/20">
                     <div
                       role="status"
                       aria-live="polite"
                       aria-atomic="true"
-                      className="font-serif text-[130px] leading-none tabular-nums text-white drop-shadow-lg"
+                      className="text-[80px] font-light leading-none tabular-nums text-white drop-shadow-lg"
                     >
                       <span className="sr-only">Photo in </span>
                       {seconds}
                       <span className="sr-only"> seconds</span>
                     </div>
-                    <p className="mt-2 rounded-full bg-black/50 px-4 py-2 text-[11px] text-white">
+                    <p className="mt-3 rounded-full bg-black/70 px-3 py-2 text-[10px] text-white">
                       {seconds > 3
                         ? 'Step back. Find your position.'
                         : 'Stay still. You’re nearly there.'}
@@ -411,17 +342,17 @@ export function CameraCaptureModal({
                   </div>
                 )}
               </div>
-              <div className="shrink-0 border-t border-[#d7dccf] px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-8">
+              <div className="w-full max-w-[348px] pt-3">
                 {phase === 'preview' ? (
                   <>
-                    <div className="mb-2 flex min-h-9 items-center justify-between gap-4 text-[10px] text-[#65745a]">
+                    <div className="mb-2 flex min-h-11 items-center justify-between gap-3 text-[10px] text-[#ababab]">
                       {cameraDevices.length > 1 ? (
                         <select
                           aria-label="Camera lens"
                           value={cameraDeviceId}
                           disabled={counting || capturing || switching}
                           onChange={(e) => onSelectCamera(e.target.value)}
-                          className="min-h-11 max-w-[60%] min-w-0 bg-transparent text-[11px]"
+                          className="min-h-11 max-w-[60%] bg-[#101010] text-[11px]"
                         >
                           <option value="" disabled>
                             Camera
@@ -443,15 +374,18 @@ export function CameraCaptureModal({
                       <button
                         aria-pressed={showGuide}
                         onClick={() => setShowGuide((v) => !v)}
-                        className="min-h-11 underline underline-offset-4"
+                        className={secondary}
                       >
                         {showGuide ? 'Hide tracking' : 'Show tracking'}
                       </button>
                     </div>
-                    <div className="mx-auto flex max-w-xl items-center gap-3">
+                    <div className="flex gap-2">
                       <button
-                        className={primary}
+                        className={`${FIGMA_FLOW_BUTTON} flex-1 !px-3 !tracking-[1px]`}
                         disabled={!ready}
+                        aria-label={
+                          counting ? 'Cancel timer' : 'Start 10-second timer'
+                        }
                         onClick={() => {
                           if (counting) setTimerStarted(null)
                           else {
@@ -460,34 +394,26 @@ export function CameraCaptureModal({
                           }
                         }}
                       >
-                        {capturing ? (
-                          <>
-                            <Loader2 size={17} />
-                            Saving photo…
-                          </>
-                        ) : counting ? (
-                          'Cancel timer'
-                        ) : (
-                          <>
-                            <Camera size={17} />
-                            {ready
-                              ? 'Start 10-second timer'
+                        {capturing
+                          ? 'Saving photo…'
+                          : counting
+                            ? 'Cancel timer'
+                            : ready
+                              ? 'Take photo / 10s'
                               : 'Waiting for camera…'}
-                          </>
-                        )}
                       </button>
                       <button
                         onClick={onNativeCamera}
                         aria-label="Use phone camera"
-                        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-[#ccd2c4] text-[#506345]"
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#2c2c2c] bg-[#1e1e1e] text-white"
                       >
-                        <Camera size={19} />
+                        <Camera size={16} />
                       </button>
                     </div>
                     {captureError && (
                       <p
                         role="alert"
-                        className="mt-2 text-center text-xs text-[#963e31]"
+                        className="mt-3 text-center text-[12px] leading-5"
                       >
                         {CAMERA_MESSAGES.capture}
                       </p>
@@ -495,95 +421,96 @@ export function CameraCaptureModal({
                     {pose.status === 'unavailable' && (
                       <button
                         onClick={() => setGuideAttempt((n) => n + 1)}
-                        className="mt-2 min-h-10 w-full text-center text-xs underline"
+                        className={`${secondary} w-full`}
                       >
                         Retry body tracking
                       </button>
                     )}
-                    <p className="mt-2 text-center text-[10px] text-[#7c8771]">
-                      10 seconds to get into position · your photo stays private
+                    <p className="mt-3 text-center text-[10px] leading-5 text-[#ababab]">
+                      10 seconds to get into position. No perfect alignment
+                      needed.
                     </p>
                   </>
                 ) : (
-                  <div className="mx-auto max-w-xl py-3">
-                    <p className="mb-4 text-center text-xs leading-6 text-[#69775d]">
-                      Can you see your head, feet and torso clearly? This is the
-                      only photo you need.
+                  <div className="text-center">
+                    <p className="mb-4 text-[12px] leading-[26px]">
+                      Check your head, feet and torso are visible.
+                      <br />
+                      This is the only photo you need.
                     </p>
-                    <div className="flex gap-3">
-                      <button onClick={onRetry} className={secondary}>
-                        <RotateCcw size={15} />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={onRetry}
+                        className={`${FIGMA_FLOW_BUTTON} !w-auto !px-5`}
+                      >
                         Retake
                       </button>
-                      <button onClick={onUsePhoto} className={primary}>
+                      <button
+                        onClick={onUsePhoto}
+                        className={FIGMA_FLOW_BUTTON}
+                      >
                         Use this photo
-                        <ArrowRight size={16} />
                       </button>
                     </div>
+                    <p className="mt-3 text-[10px] leading-5 text-[#ababab]">
+                      Your camera is now off.
+                    </p>
                   </div>
                 )}
               </div>
             </>
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center px-6 py-8 text-center">
+            <div className="flex w-full max-w-[465px] flex-1 flex-col items-center justify-center py-10 text-center">
               {phase === 'loading' ? (
                 <>
                   <Loader2
-                    size={28}
+                    size={24}
                     strokeWidth={1}
                     className={reducedMotion ? '' : 'animate-spin'}
                   />
-                  <p role="status" className="mt-5 font-serif text-3xl">
+                  <p
+                    role="status"
+                    className="mt-6 text-[12px] font-medium uppercase tracking-[2px]"
+                  >
                     {switching
-                      ? 'Changing your camera.'
-                      : 'Opening your camera.'}
+                      ? 'Changing your camera...'
+                      : 'Opening your camera...'}
                   </p>
-                  <p className="mt-3 max-w-sm text-xs leading-6 text-[#6d7862]">
-                    Allow camera access when asked. In an in-app browser, open
-                    Vora in Safari or Chrome if the camera doesn’t respond.
+                  <p className="mt-4 text-[12px] leading-[26px]">
+                    Allow camera access when asked. If an in-app browser doesn’t
+                    respond, open Vora in Safari or Chrome.
                   </p>
                 </>
               ) : (
                 <>
-                  <Camera size={28} strokeWidth={1} />
-                  <h3 className="mt-5 font-serif text-3xl">
+                  <p className="text-[12px] font-medium uppercase tracking-[2px]">
                     Let’s try another way.
-                  </h3>
-                  <p
-                    role="alert"
-                    className="mt-3 max-w-sm text-xs leading-6 text-[#6d7862]"
-                  >
+                  </p>
+                  <p role="alert" className="mt-4 text-[12px] leading-[26px]">
                     {CAMERA_MESSAGES[error]}
                   </p>
                 </>
               )}
-              <div className="mt-7 w-full max-w-xs space-y-3">
-                <button onClick={onNativeCamera} className={primary}>
-                  <Camera size={16} />
+              <div className="mt-7 w-full max-w-[348px] space-y-3">
+                <button onClick={onNativeCamera} className={FIGMA_FLOW_BUTTON}>
                   Use phone camera
                 </button>
                 {phase === 'error' && (
-                  <button onClick={onRetry} className={`${secondary} w-full`}>
+                  <button onClick={onRetry} className={FIGMA_FLOW_BUTTON}>
                     Retry live camera
                   </button>
                 )}
-                <button
-                  onClick={onOpenGallery}
-                  className={`${secondary} w-full`}
-                >
-                  <Images size={15} />
+                <button onClick={onOpenGallery} className={FIGMA_FLOW_BUTTON}>
                   Choose 3 library photos
                 </button>
-                <button
-                  onClick={onUseMeasurements}
-                  className="min-h-11 text-xs text-[#65775a] underline underline-offset-4"
-                >
+                <button onClick={onUseMeasurements} className={secondary}>
                   Enter measurements instead
                 </button>
               </div>
             </div>
           )}
         </section>
+        <FigmaPrivacyFooter />
       </div>
     </div>
   )
@@ -619,7 +546,7 @@ function DetectedBodyGuide({
     x2 = Math.min(w - pad, Math.max(...points.map((p) => p.x)) + pad)
   const y1 = Math.max(pad, Math.min(...points.map((p) => p.y)) - pad),
     y2 = Math.min(h - pad, Math.max(...points.map((p) => p.y)) + pad)
-  const color = frame.status === 'ready' ? '#cce5b7' : '#f1efdf'
+  const color = frame.status === 'ready' ? '#ffffff' : '#bebebe'
   return (
     <svg
       aria-hidden
