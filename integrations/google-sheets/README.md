@@ -8,7 +8,7 @@ Los resultados se muestran en la app. Esta integración guarda el correo y la fe
 2. Compartirlo con nuestro correo de Google con permiso de **Editor**, manteniendo el acceso general **Restringido**. No habilitar “cualquier persona con el enlace”.
 3. Enviarnos el enlace de la hoja. Le diremos qué correo invitar si no lo tiene.
 
-Nosotros nos encargamos de los siguientes pasos. No activar el cambio en producción hasta terminar la conexión y verificar un registro real de prueba.
+Nosotros nos encargamos de los siguientes pasos. La integración puede publicarse en espera: sin las dos variables de servidor, la app permite ver los resultados sin pedir correo. No activar la captura de leads hasta terminar la conexión y verificar una fila de prueba. La app nunca envía resultados por email.
 
 ## Conexión a cargo del equipo
 
@@ -25,8 +25,8 @@ Nosotros nos encargamos de los siguientes pasos. No activar el cambio en producc
    - `VORA_LEADS_WEBHOOK_URL`: URL de implementación.
    - `VORA_LEADS_WEBHOOK_SECRET`: el mismo secreto, marcado como secreto.
    Estas variables no deben tener prefijo `NEXT_PUBLIC_`. Si Webflow cambia el origen interno de la petición, configurar `VORA_APP_ORIGIN=https://vora-blog.webflow.io`.
-7. Integrar la PR y desplegar. Probar desde `/app` con un correo sintético: confirmar la fila en el Sheet y que los resultados se muestran únicamente después del guardado. Repetir el mismo correo y verificar que no se duplica. Verificar que un error de conexión muestra reintento y conserva el perfil.
+7. Desplegar la configuración. `GET /app/api/leads` debe devolver únicamente `{"enabled":true}`; no expone URL, secretos ni leads. Probar desde `/app` con un correo sintético: confirmar la fila en el Sheet y el recibo de guardado. Repetir el mismo correo y verificar que no se duplica. Verificar que un error de conexión muestra reintento, conserva el perfil y permite continuar a los resultados. Eliminar la fila de prueba mediante la recuperación normal de la hoja.
 
-La app devuelve un error temporal si falta configuración. Un HTTP 200 de Google por sí solo no confirma el guardado: se exige `ok: true` y el ID de solicitud correspondiente. El bloqueo en Apps Script serializa las escrituras y evita filas duplicadas en reintentos.
+Sin configuración válida, `GET /app/api/leads` devuelve `{"enabled":false}` y la interfaz no pide correo. Un POST directo devuelve un error temporal y no guarda datos. Un HTTP 200 de Google por sí solo no confirma el guardado: se exige `ok: true` y el ID de solicitud correspondiente. El bloqueo en Apps Script serializa las escrituras y evita filas duplicadas en reintentos. Si falla la comprobación de disponibilidad, los resultados siguen accesibles; no se solicita un correo que no puede guardarse.
 
 Google Apps Script está sujeto a las cuotas de la cuenta. No se ha contratado ningún servicio de pago. Referencias oficiales: [despliegue de aplicaciones web](https://developers.google.com/apps-script/guides/web) y [cuotas](https://developers.google.com/apps-script/guides/services/quotas).
