@@ -32,7 +32,7 @@ export function IntroScreen({
     },
     {
       title: 'Enter measurements',
-      detail: 'Use your shoulder, waist and hip measurements.',
+      detail: 'Use your bust, waist and hip measurements.',
       note: 'NO CAMERA',
       icon: Ruler,
       action: onEnterMeasurements,
