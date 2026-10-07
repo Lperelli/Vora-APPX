@@ -63,6 +63,10 @@ export function createPoseGuide(
       state('ready')
     } catch (error) {
       if (closed) throw error
+      console.warn(
+        '[Vora tracking] Worker startup failed; recovering with video.',
+        error instanceof Error ? error.message : 'Unknown startup error'
+      )
       await startCompatibility()
     }
   })()
@@ -76,8 +80,13 @@ export function createPoseGuide(
       return await detector.detect(video, timestamp)
     } catch (error) {
       if (closed) throw error
-      if (mode === 'worker') await startCompatibility()
-      else if (!retriedCompatibility) {
+      if (mode === 'worker') {
+        console.warn(
+          '[Vora tracking] Worker frame failed; recovering with video.',
+          error instanceof Error ? error.message : 'Unknown frame error'
+        )
+        await startCompatibility()
+      } else if (!retriedCompatibility) {
         retriedCompatibility = true
         await startCompatibility(true)
       } else throw error

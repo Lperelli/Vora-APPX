@@ -1,11 +1,11 @@
 import { asset } from './base-path'
-import { POSE_MODEL_PATH, POSE_WASM_BASE } from './photo-flow'
+import { POSE_MODEL_PATH, VISION_ASSET_PATH } from './vision-assets'
 import { assessDetectedPoses, type LivePoseFrame } from './live-pose-guide'
 
 /** A disposable worker owns the model and every transferred camera bitmap. */
 export function createWorkerPoseGuide() {
   const script = new URL(
-    asset('/pose-guide.worker.js?v=2'),
+    asset('/pose-guide.worker.js?v=3'),
     window.location.href
   ).href
   // Webflow serves assets on a separate origin. A same-origin blob bootstrap
@@ -92,7 +92,7 @@ export function createWorkerPoseGuide() {
     worker.postMessage({
       type: 'init',
       modelPath: new URL(asset(POSE_MODEL_PATH), window.location.href).href,
-      wasmBase: POSE_WASM_BASE,
+      runtimeBase: new URL(asset(VISION_ASSET_PATH), window.location.href).href,
     })
   } catch {
     fail(new Error('Body guide unavailable'))

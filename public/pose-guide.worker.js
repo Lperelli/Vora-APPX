@@ -4,9 +4,9 @@ let landmarker
 self.onmessage = async ({ data }) => {
   if (data?.type === 'init') {
     try {
-      // Keep this exact version in sync with photo-flow.ts and package.json.
-      const { FilesetResolver, PoseLandmarker } = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/vision_bundle.mjs')
-      const fileset = await FilesetResolver.forVisionTasks(data.wasmBase)
+      const { FilesetResolver, PoseLandmarker } = await import(`${data.runtimeBase}/vision_bundle.mjs`)
+      const suffix = await FilesetResolver.isSimdSupported() ? 'vision_wasm_internal' : 'vision_wasm_nosimd_internal'
+      const fileset = { wasmLoaderPath: `${data.runtimeBase}/${suffix}.js`, wasmBinaryPath: `${data.runtimeBase}/${suffix}.bin` }
       const options = (delegate) => ({
         baseOptions: { modelAssetPath: data.modelPath, delegate },
         runningMode: 'VIDEO',

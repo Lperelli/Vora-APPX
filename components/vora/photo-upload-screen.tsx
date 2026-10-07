@@ -1,15 +1,10 @@
 'use client'
 
 import Image from 'next/image'
+import { Plus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { asset } from '@/lib/base-path'
 import { FigmaFlowShell, FIGMA_FLOW_BUTTON } from './figma-flow-shell'
-
-const EXAMPLES = [
-  '/figma/full-body-example-1.png',
-  '/figma/full-body-example-2.png',
-  '/figma/full-body-example-2.png',
-]
 
 export function PhotoUploadScreen({
   files,
@@ -96,18 +91,9 @@ export function PhotoUploadScreen({
           {[0, 1, 2].map((index) => (
             <div
               key={index}
-              className={`relative aspect-[115/165] w-[115px] min-w-0 shrink rounded-[4px] border-2 ${choosing ? 'border-dashed border-[#bebebe]' : 'border-solid border-white'}`}
+              className="relative aspect-[115/165] w-[115px] min-w-0 shrink rounded-[4px] border border-dashed border-white/35"
             >
-              {!choosing ? (
-                <Image
-                  src={asset(EXAMPLES[index])}
-                  alt={`Full-length photo example ${index + 1}`}
-                  fill
-                  unoptimized
-                  sizes="115px"
-                  className={`rounded-[2px] ${index === 0 ? 'object-contain bg-white' : 'object-cover'}`}
-                />
-              ) : files[index] && previews[index] ? (
+              {files[index] && previews[index] ? (
                 <>
                   <Image
                     src={previews[index]}
@@ -139,9 +125,12 @@ export function PhotoUploadScreen({
                 <button
                   onClick={choosePhotos}
                   aria-label={`Add library photo ${index + 1}`}
-                  className="flex h-full w-full items-center justify-center text-[10px] font-medium uppercase leading-5 tracking-[2px] hover:bg-white/5"
+                  className="group flex h-full w-full flex-col items-center justify-center gap-4 rounded-[3px] text-[10px] font-medium uppercase leading-5 tracking-[2px] transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
                 >
-                  Body {index + 1}
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/[0.07] text-white/65 transition-colors group-hover:bg-white/10 group-hover:text-white">
+                    <Plus size={24} strokeWidth={1.25} aria-hidden="true" />
+                  </span>
+                  <span className="text-white/65">Photo 0{index + 1}</span>
                 </button>
               )}
             </div>

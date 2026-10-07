@@ -16,7 +16,7 @@ import { VoraLogo } from '@/components/vora/vora-logo'
 import { type BodyAnalysis, buildAnalysisFromBodyType } from '@/lib/body-type-analysis'
 import { analyzeMeasurements, buildAnalysisFromClassification, type ManualMeasurements } from '@/lib/analyze'
 import { classifyBodyType } from '@/lib/body-classifier'
-import { measureFromImage } from '@/lib/photo-flow'
+import { createPhotoAnalyzer, type PhotoMeasureResult } from '@/lib/photo-flow'
 
 type Step =
   | 'intro'      // Entry screen: "WE KNOW ONLINE FITTING IS A STRUGGLE"
@@ -98,12 +98,13 @@ export default function VoraApp() {
       setPhotoIssue(null)
 
       const started = now()
+      const photoAnalyzer = createPhotoAnalyzer()
       try {
-        const validWidths: NonNullable<Awaited<ReturnType<typeof measureFromImage>>['widths']>[] = []
+        const validWidths: NonNullable<PhotoMeasureResult['widths']>[] = []
         let lastReason: PhotoIssue = 'no_body'
 
         for (const file of files) {
-          const measured = await measureFromImage(file)
+          const measured = await photoAnalyzer.measure(file)
           if (run !== analysisRun.current) return
           if (measured.ok && measured.widths) {
             validWidths.push(measured.widths)
@@ -145,6 +146,8 @@ export default function VoraApp() {
         if (run !== analysisRun.current) return
         setPhotoIssue('load_failed')
         setStep('photoFallback')
+      } finally {
+        photoAnalyzer.dispose()
       }
     },
     [waitRemaining]
