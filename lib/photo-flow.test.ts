@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const model = vi.hoisted(() => ({ create: vi.fn(), detect: vi.fn() }))
+const prepare = vi.hoisted(() => vi.fn())
+vi.mock('./photo-image', () => ({ preparePhoto: prepare }))
 vi.mock('@mediapipe/tasks-vision', () => ({
   FilesetResolver: { isSimdSupported: vi.fn().mockResolvedValue({}) },
   PoseLandmarker: { createFromOptions: model.create },
@@ -10,12 +12,13 @@ beforeEach(() => {
   vi.stubGlobal('document', { createElement: vi.fn(() => ({ width: 1, height: 1 })) })
   model.create.mockReset().mockResolvedValue({ detect: model.detect })
   model.detect.mockReset()
+  prepare.mockReset()
 })
 afterEach(() => vi.unstubAllGlobals())
 
 function fixture() {
   const bitmap = { close: vi.fn() }
-  vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(bitmap))
+  prepare.mockResolvedValue({ image: {}, dispose: bitmap.close })
   const points = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0.95, z: 0 }))
   points[0].y = 0.08
   points[11].y = points[12].y = 0.25
@@ -133,6 +136,35 @@ describe('photo pose quality',()=>{
 
 
 describe('photo analysis sessions', () => {
+  it('distinguishes an unreadable image from a model download failure', async () => {
+    prepare.mockRejectedValue(new Error('Unsupported format'))
+    const { measureFromImage } = await import('./photo-flow')
+    expect((await measureFromImage(new Blob(['image']))).reason).toBe('image_decode_failed')
+    expect(model.create).not.toHaveBeenCalled()
+  })
+  it('keeps a valid result if a mask was already closed, and still frees the photo', async () => {
+    const data = fixture(); model.detect.mockReturnValue(data.result)
+    data.mask.close.mockImplementation(() => { throw new Error('Context lost') })
+    const { measureFromImage } = await import('./photo-flow')
+    expect((await measureFromImage(new Blob())).ok).toBe(true)
+    expect(data.bitmap.close).toHaveBeenCalledOnce()
+  })
+  it('times out a stalled model and closes an instance that arrives later', async () => {
+    vi.useFakeTimers()
+    try {
+      const data = fixture(); const close = vi.fn()
+      let finish!: (value: unknown) => void
+      model.create.mockImplementation(() => new Promise(resolve => { finish = resolve }))
+      const { measureFromImage } = await import('./photo-flow')
+      const result = measureFromImage(new Blob())
+      await vi.advanceTimersByTimeAsync(45001)
+      expect((await result).reason).toBe('load_failed')
+      expect(data.bitmap.close).toHaveBeenCalledOnce()
+      finish({ close, detect: model.detect })
+      await vi.advanceTimersByTimeAsync(1)
+      expect(close).toHaveBeenCalledOnce()
+    } finally { vi.useRealTimers() }
+  })
   it('reuses a model for three library images and releases it once at the end', async () => {
     const data = fixture(), close = vi.fn()
     model.detect.mockReturnValue(data.result)

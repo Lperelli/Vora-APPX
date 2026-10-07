@@ -1,8 +1,7 @@
 'use client'
 
 import { motion, useReducedMotion } from 'framer-motion'
-import { VoraLogo } from './vora-logo'
-import { VoraScreenHeader } from './screen-return-button'
+import { FigmaFlowShell } from './figma-flow-shell'
 import { VORA_FLOW_MAX } from './vora-layout'
 
 export type PhotoIssue =
@@ -15,6 +14,7 @@ export type PhotoIssue =
   | 'not_full_body'
   | 'low_visibility'
   | 'silhouette_unreadable'
+  | 'image_decode_failed'
   | 'load_failed'
   | 'low_confidence'
 
@@ -28,7 +28,8 @@ const MESSAGES: Record<PhotoIssue, string> = {
   not_full_body: 'We need your whole body in frame, head to toe. Step back and try again.',
   low_visibility: 'The photo was a little unclear. Better lighting and fitted clothes help a lot.',
   silhouette_unreadable: "We couldn't read your silhouette. Fitted clothing against a plain background works best.",
-  load_failed: "Something went wrong reading the photo. Let's try again.",
+  image_decode_failed: "This browser couldn't open that photo. Try a JPG or PNG, or take a new photo with the camera.",
+  load_failed: "The photo analyzer couldn't start. Check your connection and retry. You can also enter your measurements.",
   low_confidence:
     "We couldn’t find a consistent style profile from this photo. For a clearer view, the photo needs to be front-facing, full-body, with fitted clothing — or you can enter measurements.",
 }
@@ -49,9 +50,7 @@ export function PhotoFallbackScreen({ issue, onRetryPhoto, onEnterMeasurements, 
   const prefersReducedMotion = useReducedMotion()
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background font-sans text-foreground">
-      <VoraScreenHeader onReturn={onBack} variant="onTheme" center={<VoraLogo />} />
-
+    <FigmaFlowShell onReturn={onBack}>
       <div className="flex flex-1 flex-col items-center justify-center px-4 pb-[max(3rem,env(safe-area-inset-bottom))] sm:px-6">
         <motion.div
           className={`${VORA_FLOW_MAX} max-w-[440px] text-center`}
@@ -84,6 +83,6 @@ export function PhotoFallbackScreen({ issue, onRetryPhoto, onEnterMeasurements, 
           </div>
         </motion.div>
       </div>
-    </div>
+    </FigmaFlowShell>
   )
 }
