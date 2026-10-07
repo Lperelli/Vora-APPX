@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPoseGuide } from './pose-guide-client'
+import { createWorkerPoseGuide as createPoseGuide } from './pose-guide-worker-client'
 
 class TestWorker {
   static last: TestWorker

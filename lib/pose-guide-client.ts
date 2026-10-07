@@ -1,84 +1,114 @@
-import { asset } from './base-path'
-import { POSE_MODEL_PATH, POSE_WASM_BASE } from './photo-flow'
-import { assessDetectedPoses, type LivePoseFrame } from './live-pose-guide'
+import { createWorkerPoseGuide } from './pose-guide-worker-client'
+import { createCompatibilityPoseGuide } from './pose-guide-compat'
+import type { LivePoseFrame } from './live-pose-guide'
 
-/** A disposable worker owns the model and every transferred camera bitmap. */
-export function createPoseGuide() {
-  const script = new URL(asset('/pose-guide.worker.js?v=2'), window.location.href).href
-  // Webflow serves assets on a separate origin. A same-origin blob bootstrap
-  // can import that public classic worker without a cross-origin Worker error.
-  const bootstrap = URL.createObjectURL(new Blob([`importScripts(${JSON.stringify(script)})`], { type: 'text/javascript' }))
-  let worker: Worker
-  try { worker = new Worker(bootstrap) } catch (error) { URL.revokeObjectURL(bootstrap); throw error }
+export type GuideState = 'loading' | 'recovering' | 'ready'
+type Detector = ReturnType<typeof createWorkerPoseGuide>
+
+/** WebKit's worker canvas/bitmap support differs from its normal video canvas. */
+export function useCompatiblePoseGuide(userAgent: string) {
+  return (
+    /AppleWebKit/i.test(userAgent) &&
+    !/(Chrome|Chromium|Edg|OPR)\//i.test(userAgent)
+  )
+}
+
+/** Keep detection alive if worker creation, model setup or frame transfer fails. */
+export function createPoseGuide(
+  options: {
+    onStateChange?: (state: GuideState) => void
+    strategy?: 'auto' | 'compatibility'
+  } = {}
+) {
   let closed = false
-  let initialised = false
-  let creatingFrame = false
-  let nextId = 0
-  let pending: { id: number; resolve: (frame: LivePoseFrame) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> } | null = null
-  let resolveReady!: () => void
-  let rejectReady!: (error: Error) => void
-  const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject })
-  const initialisationTimer = setTimeout(() => fail(new Error('Body guide timed out')), 20000)
+  let busy = false
+  let mode: 'worker' | 'compatibility' = 'worker'
+  let detector: Detector | null = null
+  let recovery: Promise<void> | null = null
+  let retriedCompatibility = false
+  const abort = () => new DOMException('Body guide closed', 'AbortError')
+  const state = (value: GuideState) => {
+    if (!closed) options.onStateChange?.(value)
+  }
 
-  function dispose() {
-    if (closed) return
-    closed = true
-    clearTimeout(initialisationTimer)
-    URL.revokeObjectURL(bootstrap)
-    worker.terminate()
-    const error = new DOMException('Body guide closed', 'AbortError')
-    rejectReady(error)
-    if (pending) { clearTimeout(pending.timer); pending.reject(error); pending = null }
+  const startCompatibility = (preferCPU = false) => {
+    if (closed) return Promise.reject(abort())
+    if (recovery && !preferCPU) return recovery
+    mode = 'compatibility'
+    detector?.dispose()
+    state('recovering')
+    detector = createCompatibilityPoseGuide({ preferCPU })
+    recovery = detector.ready.then(() => {
+      if (closed) throw abort()
+      state('ready')
+    })
+    return recovery
   }
-  function fail(error: Error) {
-    rejectReady(error)
-    if (pending) { clearTimeout(pending.timer); pending.reject(error); pending = null }
-    dispose()
-  }
-  worker.onerror = () => fail(new Error('Body guide unavailable'))
-  worker.onmessageerror = () => fail(new Error('Body guide unavailable'))
-  worker.onmessage = ({ data }) => {
-    if (closed) return
-    if (data?.type === 'error') { fail(new Error('Body guide unavailable')); return }
-    if (data?.type === 'ready') {
-      initialised = true
-      clearTimeout(initialisationTimer)
-      URL.revokeObjectURL(bootstrap)
-      resolveReady()
-    } else if (data?.type === 'frame' && pending && pending.id === data.id) {
-      clearTimeout(pending.timer)
-      const request = pending
-      pending = null
-      request.resolve(assessDetectedPoses(Array.isArray(data.landmarks) ? data.landmarks : []))
+
+  const ready = (async () => {
+    state('loading')
+    if (
+      options.strategy === 'compatibility' ||
+      useCompatiblePoseGuide(navigator.userAgent) ||
+      typeof Worker === 'undefined' ||
+      typeof createImageBitmap === 'undefined'
+    ) {
+      await startCompatibility()
+      return
+    }
+    try {
+      detector = createWorkerPoseGuide()
+      await detector.ready
+      if (closed) throw abort()
+      state('ready')
+    } catch (error) {
+      if (closed) throw error
+      await startCompatibility()
+    }
+  })()
+
+  const detectWithRecovery = async (
+    video: HTMLVideoElement,
+    timestamp: number
+  ): Promise<LivePoseFrame> => {
+    if (closed || !detector) throw abort()
+    try {
+      return await detector.detect(video, timestamp)
+    } catch (error) {
+      if (closed) throw error
+      if (mode === 'worker') await startCompatibility()
+      else if (!retriedCompatibility) {
+        retriedCompatibility = true
+        await startCompatibility(true)
+      } else throw error
+      if (closed) throw abort()
+      return detectWithRecovery(video, performance.now())
     }
   }
-  try {
-    worker.postMessage({ type: 'init', modelPath: new URL(asset(POSE_MODEL_PATH), window.location.href).href, wasmBase: POSE_WASM_BASE })
-  } catch { fail(new Error('Body guide unavailable')) }
 
   return {
     ready,
-    dispose,
-    async detect(video: HTMLVideoElement, timestamp: number): Promise<LivePoseFrame> {
-      if (closed || !initialised) throw new DOMException('Body guide closed', 'AbortError')
-      if (pending || creatingFrame) throw new Error('Frame already pending')
-      creatingFrame = true
-      let bitmap: ImageBitmap | undefined
+    get mode() {
+      return mode
+    },
+    dispose() {
+      if (closed) return
+      closed = true
+      detector?.dispose()
+    },
+    async detect(
+      video: HTMLVideoElement,
+      timestamp: number
+    ): Promise<LivePoseFrame> {
+      if (closed) throw abort()
+      if (busy) throw new Error('Frame already pending')
+      busy = true
       try {
-        const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight))
-        try { bitmap = await createImageBitmap(video, { resizeWidth: Math.max(1, Math.round(video.videoWidth * scale)), resizeHeight: Math.max(1, Math.round(video.videoHeight * scale)) }) }
-        catch (error) {
-          if (closed || !(error instanceof TypeError || (error instanceof DOMException && error.name === 'NotSupportedError'))) throw error
-          bitmap = await createImageBitmap(video)
-        }
-        if (closed) throw new DOMException('Body guide closed', 'AbortError')
-        const id = ++nextId
-        return await new Promise<LivePoseFrame>((resolve, reject) => {
-          pending = { id, resolve, reject, timer: setTimeout(() => fail(new Error('Frame timed out')), 4000) }
-          try { worker.postMessage({ type: 'frame', id, bitmap, timestamp }, [bitmap!]); bitmap = undefined }
-          catch { bitmap?.close(); bitmap = undefined; fail(new Error('Body guide unavailable')) }
-        })
-      } finally { bitmap?.close(); creatingFrame = false }
+        await ready
+        return await detectWithRecovery(video, timestamp)
+      } finally {
+        busy = false
+      }
     },
   }
 }
