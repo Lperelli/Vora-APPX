@@ -89,6 +89,7 @@ const SHOW_CELEBRITIES_IN_MVP = true
 interface ResultsScreenProps {
   analysis: BodyAnalysis
   onRedo: () => void
+  onRefineMeasurements: () => void
   /** Opens the editorial style-recommendations screen (Figma 327:423). */
   onShowRecommendations: () => void
 }
@@ -97,7 +98,7 @@ interface ResultsScreenProps {
  * Figma-aligned results (Frame 98, 545px): silhouette card → what works for you → celebrity
  * references with per-card 3D Y flip revealed in sequence when the block scrolls into view.
  */
-export function ResultsScreen({ analysis, onRedo, onShowRecommendations }: ResultsScreenProps) {
+export function ResultsScreen({ analysis, onRedo, onRefineMeasurements, onShowRecommendations }: ResultsScreenProps) {
   const prefersReducedMotion = useReducedMotion()
   const silhouette = silhouetteForBodyType(analysis.bodyType)
   const label = analysis.bodyTypeLabel
@@ -115,7 +116,7 @@ export function ResultsScreen({ analysis, onRedo, onShowRecommendations }: Resul
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="mb-4 sm:mb-6"
       >
-        <VoraScreenHeader onReturn={onRedo} variant="onTheme" center={<VoraLogo />} />
+        <VoraScreenHeader onReturn={onRedo} variant="onTheme" center={<VoraLogo design="figma" />} />
       </motion.div>
 
       {/* ── Intro copy ─────────────────────────────────────────── */}
@@ -125,12 +126,22 @@ export function ResultsScreen({ analysis, onRedo, onShowRecommendations }: Resul
         animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
         transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.08 }}
       >
-        <p className="text-[10px] uppercase tracking-[0.3em] text-foreground/85">Ta-da! Your body type</p>
+        <p className="text-[10px] uppercase tracking-[0.3em] text-foreground/85">{analysis.analysisSource === 'photo' ? 'Your estimated style profile' : 'Ta-da! Your body type'}</p>
         <p className="px-0.5 text-[12px] leading-relaxed text-foreground/55 sm:px-0 sm:text-[13px]">
           {analysis.analysisSource === 'measurement'
             ? "We've analyzed your measurements. Here's what we discovered."
             : "Here’s what your visible proportions suggest."}
         </p>
+        {analysis.analysisSource === 'photo' && (
+          <div className="mx-auto max-w-[420px] px-3 text-[12px] leading-relaxed text-foreground/60">
+            <p>{analysis.confidence === 'low'
+              ? 'This is a starting point: your photo could fit more than one silhouette. Explore these ideas, or refine your profile with measurements.'
+              : 'A photo gives an estimate of your shape, not exact body measurements.'}</p>
+            <button type="button" onClick={onRefineMeasurements} className="mt-1 min-h-11 underline underline-offset-4 text-foreground/85 hover:text-foreground">
+              Refine with measurements
+            </button>
+          </div>
+        )}
       </motion.div>
 
       {/* ── Stacked cards (545px column) ───────────────────────── */}

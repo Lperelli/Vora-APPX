@@ -1,4 +1,5 @@
 import { classifyBodyType, type BodyWidths } from './body-classifier'
+import { PHOTO_VISIBILITY } from './body-type-config'
 
 /** Three library photos must provide at least two agreeing, usable views. */
 export function combinePhotoWidths(
@@ -8,14 +9,17 @@ export function combinePhotoWidths(
   const valid = items.filter((item) =>
     [item.shoulderW, item.waistW, item.hipW].every(
       (n) => Number.isFinite(n) && n > 0
-    )
+    ) &&
+    (item.visibility === undefined ||
+      (Number.isFinite(item.visibility) && item.visibility >= PHOTO_VISIBILITY.low))
   )
   if (source === 'camera') return items.length === 1 && valid.length === 1 ? valid[0] : null
   if (valid.length < 2) return null
   const groups = new Map<string, BodyWidths[]>()
   for (const item of valid) {
     const result = classifyBodyType(item)
-    if (result.confidence === 'low') continue
+    // An ambiguous category is still a usable view. Confidence describes the
+    // styling estimate; body visibility and photo quality were checked earlier.
     const key = result.type
     groups.set(key, [...(groups.get(key) || []), item])
   }
@@ -32,4 +36,13 @@ export function combinePhotoWidths(
     hipW: 1,
     visibility: Math.min(...agreeing.map((p) => p.visibility ?? 1)),
   }
+}
+
+/** A legible photo may produce a tentative profile; it must retain its confidence. */
+export function classifyPhotoSession(
+  items: BodyWidths[],
+  source: 'camera' | 'library'
+) {
+  const widths = combinePhotoWidths(items, source)
+  return widths ? classifyBodyType(widths) : null
 }
