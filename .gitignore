@@ -16,3 +16,6 @@ node_modules
 .DS_Store
 .vercel
 .pnpm-store/
+
+# Generated from the pinned MediaPipe package by dev/build.
+public/vision/

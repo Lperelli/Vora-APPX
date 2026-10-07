@@ -2,6 +2,7 @@ import { poseQualityIssue } from './pose-quality'
 import type { BodyWidths } from '@/lib/body-classifier'
 import { PHOTO_VISIBILITY, THRESHOLDS } from '@/lib/body-type-config'
 import { asset } from '@/lib/base-path'
+import { POSE_MODEL_PATH, visionFileset } from './vision-assets'
 
 /**
  * VORA — Photo flow (100% client-side, no upload).
@@ -13,15 +14,8 @@ import { asset } from '@/lib/base-path'
  * never leaves the device.
  *
  * Versions are pinned (no `latest`) per spec. The model `.task` is shipped
- * with VORA; the WASM runtime is loaded from the same pinned package version.
+ * with VORA; the WASM runtime is shipped from the same pinned package version.
  */
-
-// Webflow Cloud treats public `.wasm` files as Worker modules and rejects the
-// deployment when all MediaPipe variants are bundled. Keep only the 9 MB model
-// local and fetch the version-pinned runtime from jsDelivr. This URL must stay
-// in sync with the exact @mediapipe/tasks-vision version in package.json.
-export const POSE_WASM_BASE = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm'
-export const POSE_MODEL_PATH = '/models/pose_landmarker_full.task'
 
 // BlazePose landmark indices.
 const L_SHOULDER = 11
@@ -47,32 +41,90 @@ export interface PhotoMeasureResult {
   reason?: PhotoFailReason
 }
 
-// Cache the landmarker across calls (loading WASM + model is expensive).
-let landmarkerPromise: Promise<unknown> | null = null
-
-async function getLandmarker() {
-  if (!landmarkerPromise) {
-    landmarkerPromise = (async () => {
-      const { FilesetResolver, PoseLandmarker } = await import('@mediapipe/tasks-vision')
-      const fileset = await FilesetResolver.forVisionTasks(asset(POSE_WASM_BASE))
-      const makeOptions = (delegate: 'GPU' | 'CPU') => ({
-        baseOptions: { modelAssetPath: asset(POSE_MODEL_PATH), delegate },
-        runningMode: 'IMAGE' as const,
-        numPoses: 2,
-        outputSegmentationMasks: true,
-      })
+/** One analysis owns one model; camera retries cannot accumulate WebGL contexts. */
+export function createPhotoAnalyzer() {
+  let closed = false
+  let model: import('@mediapipe/tasks-vision').PoseLandmarker | null = null
+  let pending: Promise<
+    import('@mediapipe/tasks-vision').PoseLandmarker
+  > | null = null
+  let canvas: HTMLCanvasElement | null = null
+  const dispose = () => {
+    closed = true
+    try {
+      model?.close?.()
+    } catch {
+      /* A lost context may already be closed. */
+    }
+    model = null
+    if (canvas) {
       try {
-        return await PoseLandmarker.createFromOptions(fileset, makeOptions('GPU'))
+        canvas
+          .getContext?.('webgl2')
+          ?.getExtension('WEBGL_lose_context')
+          ?.loseContext()
       } catch {
-        // Some browsers / sandboxes lack WebGL — fall back to CPU.
-        return PoseLandmarker.createFromOptions(fileset, makeOptions('CPU'))
+        /* Already released. */
       }
-    })().catch(error => {
-      landmarkerPromise = null
-      throw error
-    })
+      canvas.width = canvas.height = 1
+      canvas = null
+    }
   }
-  return landmarkerPromise
+  const getLandmarker = () => {
+    if (closed)
+      return Promise.reject(new DOMException('Analysis closed', 'AbortError'))
+    if (!pending)
+      pending = (async () => {
+        const { FilesetResolver, PoseLandmarker } = await import(
+          '@mediapipe/tasks-vision'
+        )
+        const fileset = visionFileset(await FilesetResolver.isSimdSupported())
+        if (closed) throw new DOMException('Analysis closed', 'AbortError')
+        for (const delegate of ['GPU', 'CPU'] as const) {
+          canvas = document.createElement('canvas')
+          const currentCanvas = canvas
+          try {
+            const instance = await PoseLandmarker.createFromOptions(fileset, {
+              canvas: currentCanvas,
+              baseOptions: { modelAssetPath: asset(POSE_MODEL_PATH), delegate },
+              runningMode: 'IMAGE',
+              numPoses: 2,
+              outputSegmentationMasks: true,
+            })
+            if (closed) {
+              instance.close()
+              throw new DOMException('Analysis closed', 'AbortError')
+            }
+            model = instance
+            return instance
+          } catch (error) {
+            currentCanvas.width = currentCanvas.height = 1
+            canvas = null
+            if (closed || delegate === 'CPU') throw error
+          }
+        }
+        throw new Error('Analysis could not start')
+      })().catch((error) => {
+        pending = null
+        throw error
+      })
+    return pending
+  }
+  return {
+    dispose,
+    measure: (file: File | Blob) => measureImage(file, getLandmarker),
+  }
+}
+
+export async function measureFromImage(
+  file: File | Blob
+): Promise<PhotoMeasureResult> {
+  const analyzer = createPhotoAnalyzer()
+  try {
+    return await analyzer.measure(file)
+  } finally {
+    analyzer.dispose()
+  }
 }
 
 function avg(nums: number[]): number {
@@ -115,7 +167,7 @@ function silhouetteWidth(mask: Float32Array, width: number, height: number, yRow
  * reason when the photo is unusable (no body, partial body, low confidence,
  * unreadable silhouette) so the UI can offer retry / manual entry.
  */
-export async function measureFromImage(file: File | Blob): Promise<PhotoMeasureResult> {
+async function measureImage(file: File | Blob, getLandmarker: () => Promise<unknown>): Promise<PhotoMeasureResult> {
   let landmarker: {
     detect: (img: ImageBitmap) => {
       landmarks?: Array<Array<{ x: number; y: number; z: number; visibility?: number }>>

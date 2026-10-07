@@ -25,6 +25,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  async headers() {
+    return [{
+      source: '/vision/:version/:filename.bin',
+      headers: [{ key: 'Content-Type', value: 'application/wasm' }],
+    }]
+  },
 }
 
 export default nextConfig

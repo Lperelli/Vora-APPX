@@ -1,5 +1,5 @@
 import { asset } from './base-path'
-import { POSE_MODEL_PATH, POSE_WASM_BASE } from './photo-flow'
+import { POSE_MODEL_PATH, visionFileset } from './vision-assets'
 import { assessDetectedPoses, type LivePoseFrame } from './live-pose-guide'
 import type { PoseLandmarker } from '@mediapipe/tasks-vision'
 
@@ -61,7 +61,7 @@ export function createCompatibilityPoseGuide(
       '@mediapipe/tasks-vision'
     )
     if (closed) return
-    const fileset = await FilesetResolver.forVisionTasks(POSE_WASM_BASE)
+    const fileset = visionFileset(await FilesetResolver.isSimdSupported())
     if (closed) return
     const delegates: Array<'GPU' | 'CPU'> = options.preferCPU
       ? ['CPU']

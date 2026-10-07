@@ -2,11 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const model = vi.hoisted(() => ({ create: vi.fn(), detect: vi.fn() }))
 vi.mock('@mediapipe/tasks-vision', () => ({
-  FilesetResolver: { forVisionTasks: vi.fn().mockResolvedValue({}) },
+  FilesetResolver: { isSimdSupported: vi.fn().mockResolvedValue({}) },
   PoseLandmarker: { createFromOptions: model.create },
 }))
 beforeEach(() => {
   vi.resetModules()
+  vi.stubGlobal('document', { createElement: vi.fn(() => ({ width: 1, height: 1 })) })
   model.create.mockReset().mockResolvedValue({ detect: model.detect })
   model.detect.mockReset()
 })
@@ -128,4 +129,41 @@ describe('photo pose quality',()=>{
   expect((await measureFromImage(new Blob())).reason).toBe('arms_obscured')
   expect(data.bitmap.close).toHaveBeenCalledOnce()
  })
+})
+
+
+describe('photo analysis sessions', () => {
+  it('reuses a model for three library images and releases it once at the end', async () => {
+    const data = fixture(), close = vi.fn()
+    model.detect.mockReturnValue(data.result)
+    model.create.mockResolvedValue({ detect: model.detect, close })
+    const { createPhotoAnalyzer } = await import('./photo-flow')
+    const analyzer = createPhotoAnalyzer()
+    for (let i = 0; i < 3; i++) expect((await analyzer.measure(new Blob())).ok).toBe(true)
+    expect(model.create).toHaveBeenCalledOnce()
+    expect(close).not.toHaveBeenCalled()
+    analyzer.dispose(); analyzer.dispose()
+    expect(close).toHaveBeenCalledOnce()
+    expect((await analyzer.measure(new Blob())).reason).toBe('load_failed')
+  })
+  it('releases the single-photo model even when the pose is rejected', async () => {
+    const data = fixture(), close = vi.fn()
+    model.detect.mockReturnValue({ ...data.result, landmarks: [] })
+    model.create.mockResolvedValue({ detect: model.detect, close })
+    const { measureFromImage } = await import('./photo-flow')
+    expect((await measureFromImage(new Blob())).reason).toBe('no_body')
+    expect(close).toHaveBeenCalledOnce()
+  })
+  it('closes a model that finishes loading after its session was cancelled', async () => {
+    fixture()
+    let finish!: (value: unknown) => void
+    const close = vi.fn()
+    model.create.mockImplementation(() => new Promise(resolve => { finish = resolve }))
+    const { createPhotoAnalyzer } = await import('./photo-flow')
+    const analyzer = createPhotoAnalyzer(), result = analyzer.measure(new Blob())
+    await vi.waitFor(() => expect(model.create).toHaveBeenCalledOnce())
+    analyzer.dispose(); finish({ close, detect: model.detect })
+    expect((await result).reason).toBe('load_failed')
+    expect(close).toHaveBeenCalledOnce()
+  })
 })

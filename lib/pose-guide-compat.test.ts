@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const model = vi.hoisted(() => ({ fileset: vi.fn(), create: vi.fn() }))
 vi.mock('@mediapipe/tasks-vision', () => ({
-  FilesetResolver: { forVisionTasks: model.fileset },
+  FilesetResolver: { isSimdSupported: model.fileset },
   PoseLandmarker: { createFromOptions: model.create },
 }))
 import { createCompatibilityPoseGuide } from './pose-guide-compat'
