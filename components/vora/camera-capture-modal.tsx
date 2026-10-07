@@ -11,7 +11,7 @@ import {
   type CameraFacingMode,
   type CameraIssue,
 } from '@/lib/camera'
-import { createPoseGuide } from '@/lib/pose-guide-client'
+import { createPoseGuide, type GuideState } from '@/lib/pose-guide-client'
 import {
   createPoseFeedbackTracker,
   type LivePoseFrame,
@@ -45,7 +45,7 @@ const GUIDE_COPY: Record<LivePoseStatus, string> = {
   loading: 'Preparing your body guide…',
   no_body: 'Step into the frame',
   multiple_bodies: 'Keep only you in the frame',
-  low_visibility: 'Find brighter, even light',
+  low_visibility: 'Make sure your whole body is clearly visible',
   not_full_body: 'Keep your head and feet visible',
   too_close: 'Take a small step back',
   too_far: 'Move a little closer',
@@ -109,6 +109,8 @@ export function CameraCaptureModal({
   const [size, setSize] = useState({ width: 720, height: 1280 })
   const [showGuide, setShowGuide] = useState(true)
   const [guideAttempt, setGuideAttempt] = useState(0)
+  const [guideState, setGuideState] = useState<GuideState>('loading')
+  const [guideIssue, setGuideIssue] = useState<'load' | 'frame'>('load')
   const [timerStarted, setTimerStarted] = useState<number | null>(null)
   const [seconds, setSeconds] = useState(10)
   const captureRef = useRef(onCapture)
@@ -135,6 +137,7 @@ export function CameraCaptureModal({
 
   useEffect(() => {
     setPose(INITIAL_POSE)
+    setGuideState('loading')
     if (
       phase !== 'preview' ||
       !videoReady ||
@@ -151,11 +154,15 @@ export function CameraCaptureModal({
     const feedback = createPoseFeedbackTracker()
     let lastVideoTime = -1
     let lastResultAt = performance.now()
-    const unavailable = () => {
-      if (active) setPose({ status: 'unavailable', points: [], alignment: 0 })
+    const unavailable = (issue: 'load' | 'frame') => {
+      if (active) {
+        setGuideIssue(issue)
+        setPose({ status: 'unavailable', points: [], alignment: 0 })
+      }
     }
     const update = async () => {
       if (!active || !guide) return
+      const started = performance.now()
       try {
         if (
           !document.hidden &&
@@ -176,21 +183,33 @@ export function CameraCaptureModal({
         } else if (performance.now() - lastResultAt > 1200) {
           setPose({ status: 'no_body', points: [], alignment: 0 })
         }
-        if (active) timer = setTimeout(() => void update(), 200)
+        // Aim for fluid guidance without monopolising Safari's UI thread.
+        const elapsed = performance.now() - started
+        const delay =
+          guide.mode === 'compatibility'
+            ? Math.max(80, Math.min(500, elapsed * 2))
+            : Math.max(30, 100 - elapsed)
+        if (active) timer = setTimeout(() => void update(), delay)
       } catch {
         guide.dispose()
-        unavailable()
+        unavailable('frame')
       }
     }
     try {
-      guide = createPoseGuide()
+      guide = createPoseGuide({
+        onStateChange: (state) => {
+          if (!active) return
+          setGuideState(state)
+          if (state !== 'ready') setPose(INITIAL_POSE)
+        },
+      })
       void guide.ready
         .then(() => {
           if (active) void update()
         })
-        .catch(unavailable)
+        .catch(() => unavailable('load'))
     } catch {
-      unavailable()
+      unavailable('load')
     }
     return () => {
       active = false
@@ -298,7 +317,13 @@ export function CameraCaptureModal({
                       {!videoReady
                         ? 'Starting live view…'
                         : showGuide
-                          ? GUIDE_COPY[pose.status]
+                          ? pose.status === 'unavailable'
+                            ? guideIssue === 'load'
+                              ? 'Tracking couldn’t load. Check your connection, then retry.'
+                              : 'Tracking paused. Please retry tracking.'
+                            : guideState === 'recovering'
+                              ? 'Adjusting body tracking for your browser…'
+                              : GUIDE_COPY[pose.status]
                           : 'Tracking hidden · take your photo when ready'}
                     </p>
                   </div>
@@ -528,12 +553,12 @@ function DetectedBodyGuide({
 }) {
   const { width: w, height: h } = size
   const visible = (i: number) =>
-    frame.points[i]?.visibility >= 0.5 &&
+    frame.points[i]?.visibility >= 0.6 &&
     frame.points[i].x >= 0 &&
     frame.points[i].x <= 1 &&
     frame.points[i].y >= 0 &&
     frame.points[i].y <= 1
-  if (![11, 12, 23, 24].every(visible)) return null
+  if (![11, 12].every(visible)) return null
   const coords = (i: number) => ({
     x: (mirrored ? 1 - frame.points[i].x : frame.points[i].x) * w,
     y: frame.points[i].y * h,
@@ -547,9 +572,29 @@ function DetectedBodyGuide({
   const y1 = Math.max(pad, Math.min(...points.map((p) => p.y)) - pad),
     y2 = Math.min(h - pad, Math.max(...points.map((p) => p.y)) + pad)
   const color = frame.status === 'ready' ? '#ffffff' : '#bebebe'
+  const joints = [
+    0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28, 31, 32,
+  ].filter(visible)
+  const connections = [
+    [11, 12],
+    [11, 13],
+    [13, 15],
+    [12, 14],
+    [14, 16],
+    [11, 23],
+    [12, 24],
+    [23, 24],
+    [23, 25],
+    [25, 27],
+    [24, 26],
+    [26, 28],
+    [27, 31],
+    [28, 32],
+  ]
   return (
     <svg
       aria-hidden
+      data-testid="body-pose-overlay"
       viewBox={`0 0 ${w} ${h}`}
       preserveAspectRatio="xMidYMid meet"
       className="pointer-events-none absolute inset-0 h-full w-full"
@@ -562,7 +607,26 @@ function DetectedBodyGuide({
         strokeOpacity=".8"
         vectorEffect="non-scaling-stroke"
       />
-      {[11, 12, 23, 24].map((i) => {
+      {connections
+        .filter(([a, b]) => visible(a) && visible(b))
+        .map(([a, b]) => {
+          const start = coords(a),
+            end = coords(b)
+          return (
+            <line
+              key={`${a}-${b}`}
+              x1={start.x}
+              y1={start.y}
+              x2={end.x}
+              y2={end.y}
+              stroke={color}
+              strokeWidth="1"
+              strokeOpacity=".55"
+              vectorEffect="non-scaling-stroke"
+            />
+          )
+        })}
+      {joints.map((i) => {
         const p = coords(i)
         return (
           <circle
