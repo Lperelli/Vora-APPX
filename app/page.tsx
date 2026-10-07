@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'framer-motion'
 import { IntroScreen } from '@/components/vora/intro-screen'
 import { LiveCameraScreen } from '@/components/vora/live-camera-screen'
-import { combinePhotoWidths } from '@/lib/photo-session'
+import { classifyPhotoSession } from '@/lib/photo-session'
 import { PhotoUploadScreen } from '@/components/vora/photo-upload-screen'
 import { MeasurementsQuizScreen } from '@/components/vora/measurements-quiz-screen'
 import { ProcessingScreen } from '@/components/vora/processing-screen'
@@ -15,7 +15,6 @@ import { PhotoFallbackScreen, type PhotoIssue } from '@/components/vora/photo-fa
 import { VoraLogo } from '@/components/vora/vora-logo'
 import { type BodyAnalysis, buildAnalysisFromBodyType } from '@/lib/body-type-analysis'
 import { analyzeMeasurements, buildAnalysisFromClassification, type ManualMeasurements } from '@/lib/analyze'
-import { classifyBodyType } from '@/lib/body-classifier'
 import { createPhotoAnalyzer, type PhotoMeasureResult } from '@/lib/photo-flow'
 
 type Step =
@@ -24,7 +23,7 @@ type Step =
   | 'camera'
   | 'upload'     // Screen 4: photo upload
   | 'processing' // Screen 5: analyzing animation
-  | 'photoFallback' // Photo unusable / low confidence → retry or manual
+  | 'photoFallback' // Photo unusable → retry or manual
   | 'emailGate'  // Capture email before unlocking results
   | 'results'    // Screen 6: body type results
   | 'recommendations' // Screen 7: editorial style picks (Figma 327:423)
@@ -122,17 +121,9 @@ export default function VoraApp() {
           return
         }
 
-        const widths = combinePhotoWidths(validWidths, source)
-        if (!widths) {
+        const result = classifyPhotoSession(validWidths, source)
+        if (!result) {
           setPhotoIssue('inconsistent_photos')
-          setStep('photoFallback')
-          return
-        }
-
-        const result = classifyBodyType(widths)
-        if (result.confidence === 'low') {
-          // Never present a low-confidence guess as exact (spec §5).
-          setPhotoIssue('low_confidence')
           setStep('photoFallback')
           return
         }
@@ -321,6 +312,7 @@ export default function VoraApp() {
               <ResultsScreen
                 analysis={analysisResult}
                 onRedo={handleRedo}
+                onRefineMeasurements={() => setStep('measurements')}
                 onShowRecommendations={() => setStep('recommendations')}
               />
             )}

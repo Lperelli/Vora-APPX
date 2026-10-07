@@ -342,8 +342,8 @@ export function LiveCameraScreen({
           Full Body Glam / One photo
         </h1>
         <p className="mt-[18px] text-[14px] leading-[26px] tracking-[-0.3125px]">
-          Take one full-body picture right now. You’ll have 10 seconds to step
-          back and find your position.
+          Take one full-body picture. Capture instantly, or use the 10-second
+          timer to step back and find your position.
         </p>
         <ol className="mx-auto mt-6 max-w-[348px] space-y-3 text-left text-[12px] leading-[26px]">
           {[

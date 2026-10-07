@@ -112,6 +112,7 @@ export function CameraCaptureModal({
   const [guideState, setGuideState] = useState<GuideState>('loading')
   const [guideIssue, setGuideIssue] = useState<'load' | 'frame'>('load')
   const [timerStarted, setTimerStarted] = useState<number | null>(null)
+  const [captureDelay, setCaptureDelay] = useState<0 | 10>(10)
   const [seconds, setSeconds] = useState(10)
   const captureRef = useRef(onCapture)
   captureRef.current = onCapture
@@ -248,6 +249,7 @@ export function CameraCaptureModal({
   const counting = timerStarted !== null
   const ready = videoReady && !switching && !capturing
   const frame = phase === 'review' && reviewPhoto ? reviewPhoto : size
+  const controlsHeight = phase === 'preview' ? 420 : 360
   const hasBody =
     !['low_visibility', 'no_body', 'multiple_bodies'].includes(pose.status) &&
     [11, 12, 23, 24].every((index) => pose.points[index]?.visibility >= 0.6)
@@ -278,7 +280,7 @@ export function CameraCaptureModal({
               <div
                 className="relative shrink-0 overflow-hidden rounded-[4px] border border-white/15 bg-[#080808]"
                 style={{
-                  width: `min(100%, calc(clamp(220px, calc(100dvh - 360px), 620px) * ${frame.width / frame.height}))`,
+                  width: `min(100%, calc(clamp(220px, calc(100dvh - ${controlsHeight}px), 620px) * ${frame.width / frame.height}))`,
                   aspectRatio: `${frame.width} / ${frame.height}`,
                 }}
               >
@@ -404,15 +406,38 @@ export function CameraCaptureModal({
                         {showGuide ? 'Hide tracking' : 'Show tracking'}
                       </button>
                     </div>
+                    <div
+                      role="group"
+                      aria-label="Photo timing"
+                      className="mb-3 grid grid-cols-2 rounded-full border border-white/15 p-1 text-[10px] uppercase tracking-[1px]"
+                    >
+                      {([0, 10] as const).map((delay) => (
+                        <button
+                          key={delay}
+                          type="button"
+                          aria-pressed={captureDelay === delay}
+                          disabled={counting || capturing || switching}
+                          onClick={() => setCaptureDelay(delay)}
+                          className={`min-h-11 rounded-full px-3 transition-colors disabled:opacity-40 ${captureDelay === delay ? 'bg-white text-[#101010]' : 'text-[#ababab] hover:text-white'}`}
+                        >
+                          {delay === 0 ? 'Instant photo' : '10-second timer'}
+                        </button>
+                      ))}
+                    </div>
                     <div className="flex gap-2">
                       <button
                         className={`${FIGMA_FLOW_BUTTON} flex-1 !px-3 !tracking-[1px]`}
                         disabled={!ready}
                         aria-label={
-                          counting ? 'Cancel timer' : 'Start 10-second timer'
+                          counting
+                            ? 'Cancel timer'
+                            : captureDelay === 0
+                              ? 'Take photo now'
+                              : 'Start 10-second timer'
                         }
                         onClick={() => {
                           if (counting) setTimerStarted(null)
+                          else if (captureDelay === 0) void captureRef.current()
                           else {
                             setSeconds(10)
                             setTimerStarted(Date.now())
@@ -424,7 +449,9 @@ export function CameraCaptureModal({
                           : counting
                             ? 'Cancel timer'
                             : ready
-                              ? 'Take photo / 10s'
+                              ? captureDelay === 0
+                                ? 'Take photo now'
+                                : 'Take photo / 10s'
                               : 'Waiting for camera…'}
                       </button>
                       <button
@@ -452,8 +479,9 @@ export function CameraCaptureModal({
                       </button>
                     )}
                     <p className="mt-3 text-center text-[10px] leading-5 text-[#ababab]">
-                      10 seconds to get into position. No perfect alignment
-                      needed.
+                      {captureDelay === 0
+                        ? 'Capture as soon as you tap. Keep your whole body in view.'
+                        : '10 seconds to get into position. No perfect alignment needed.'}
                     </p>
                   </>
                 ) : (
