@@ -3,6 +3,7 @@ import type { BodyWidths } from '@/lib/body-classifier'
 import { PHOTO_VISIBILITY, THRESHOLDS } from '@/lib/body-type-config'
 import { asset } from '@/lib/base-path'
 import { POSE_MODEL_PATH, visionFileset } from './vision-assets'
+import { preparePhoto, type PreparedPhoto } from './photo-image'
 
 /**
  * VORA — Photo flow (100% client-side, no upload).
@@ -10,7 +11,7 @@ import { POSE_MODEL_PATH, visionFileset } from './vision-assets'
  * A photo is processed entirely in the browser with MediaPipe PoseLandmarker
  * (Full model + segmentation mask). We read silhouette widths at the shoulder,
  * waist and hip rows, turn them into scale-invariant ratios, and hand them to
- * the shared `classifyBodyType`. The image bitmap is discarded immediately and
+ * the shared `classifyBodyType`. The decoded image is discarded immediately and
  * never leaves the device.
  *
  * Versions are pinned (no `latest`) per spec. The model `.task` is shipped
@@ -32,6 +33,7 @@ export type PhotoFailReason =
   | 'not_full_body'
   | 'low_visibility'
   | 'silhouette_unreadable'
+  | 'image_decode_failed'
   | 'load_failed'
 
 export interface PhotoMeasureResult {
@@ -73,8 +75,9 @@ export function createPhotoAnalyzer() {
   const getLandmarker = () => {
     if (closed)
       return Promise.reject(new DOMException('Analysis closed', 'AbortError'))
-    if (!pending)
-      pending = (async () => {
+    if (!pending) {
+      let timeout: ReturnType<typeof setTimeout>
+      const initialization = (async () => {
         const { FilesetResolver, PoseLandmarker } = await import(
           '@mediapipe/tasks-vision'
         )
@@ -104,10 +107,22 @@ export function createPhotoAnalyzer() {
           }
         }
         throw new Error('Analysis could not start')
-      })().catch((error) => {
-        pending = null
-        throw error
-      })
+      })()
+      pending = Promise.race([
+        initialization,
+        new Promise<never>((_, reject) => {
+          timeout = setTimeout(() => {
+            dispose()
+            reject(new Error('Photo analysis download timed out'))
+          }, 45000)
+        }),
+      ])
+        .catch((error) => {
+          pending = null
+          throw error
+        })
+        .finally(() => clearTimeout(timeout))
+    }
     return pending
   }
   return {
@@ -169,23 +184,30 @@ function silhouetteWidth(mask: Float32Array, width: number, height: number, yRow
  */
 async function measureImage(file: File | Blob, getLandmarker: () => Promise<unknown>): Promise<PhotoMeasureResult> {
   let landmarker: {
-    detect: (img: ImageBitmap) => {
+    detect: (img: HTMLCanvasElement) => {
       landmarks?: Array<Array<{ x: number; y: number; z: number; visibility?: number }>>
       segmentationMasks?: Array<{ width: number; height: number; getAsFloat32Array: () => Float32Array; close?: () => void }>
     }
   }
-  let bitmap: ImageBitmap
+  let photo: PreparedPhoto
+
+  try {
+    photo = await preparePhoto(file)
+  } catch {
+    return { ok: false, widths: null, visibility: 0, reason: 'image_decode_failed' }
+  }
 
   try {
     landmarker = (await getLandmarker()) as typeof landmarker
-    bitmap = await createImageBitmap(file)
-  } catch {
+  } catch (error) {
+    photo.dispose()
+    console.warn('[Vora photo] Analysis could not start:', error instanceof Error ? error.message : 'Unknown initialization error')
     return { ok: false, widths: null, visibility: 0, reason: 'load_failed' }
   }
 
   let masks: Array<{ close?: () => void }> = []
   try {
-    const result = landmarker.detect(bitmap)
+    const result = landmarker.detect(photo.image)
     masks = result.segmentationMasks || []
     if ((result.landmarks?.length || 0) > 1) return { ok: false, widths: null, visibility: 0, reason: 'multiple_bodies' }
     const lm = result.landmarks?.[0]
@@ -237,7 +259,7 @@ async function measureImage(file: File | Blob, getLandmarker: () => Promise<unkn
   } catch {
     return { ok: false, widths: null, visibility: 0, reason: 'silhouette_unreadable' }
   } finally {
-    masks.forEach(mask => mask.close?.())
-    bitmap.close()
+    masks.forEach(mask => { try { mask.close?.() } catch { /* Already released/lost context. */ } })
+    photo.dispose()
   }
 }
