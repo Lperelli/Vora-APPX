@@ -1,0 +1,13 @@
+{
+  "siteId": "69cfc4d5853554afd64c7164",
+  "productsCollectionId": "6ad8df2135b0c66d0224f128",
+  "picksCollectionId": "6ad8dfd9dc9111c7bb27b393",
+  "articlesCollectionId": "69d08380b5588b40a03c087c",
+  "blogOrigin": "https://vora-blog.webflow.io",
+  "bodyShapeOptions": {
+    "hourglass": "b31a800819375d7c1b851ed84ab6256e",
+    "rectangle": "95617d692b292a3040864b7c9265342e",
+    "triangle": "fb805f14166e789079fbcd98fe4845b0",
+    "inverted-triangle": "26f706fcfa4dc890c4c28c7485c67bab"
+  }
+}
