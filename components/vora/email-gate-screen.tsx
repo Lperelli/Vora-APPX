@@ -6,24 +6,27 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
 import { BUILD_BASE } from '@/lib/base-path'
-import { validLeadEmail } from '@/lib/leads'
+import { validLeadEmail, validLeadName } from '@/lib/leads'
 
 interface EmailGateScreenProps {
   onSubmit: (email: string | null) => void
   onBack: () => void
 }
 
-/** Ask for an email only when a real destination is configured. */
+/** Collect contact details only when approved legal documents and a real destination exist. */
 export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
   const prefersReducedMotion = useReducedMotion()
   const [email, setEmail] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [subscribe, setSubscribe] = useState(false)
   const [touched, setTouched] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [availability, setAvailability] = useState<'checking' | 'available' | 'unavailable'>('checking')
   const requestId = useRef<string | null>(null)
   const inFlight = useRef(false)
-  const valid = validLeadEmail(email.trim())
+  const valid = validLeadEmail(email.trim()) && validLeadName(firstName) && validLeadName(lastName)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -50,7 +53,7 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
       const response = await fetch(`${BUILD_BASE}/api/leads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), requestId: requestId.current }),
+        body: JSON.stringify({ email: email.trim(), firstName: firstName.trim(), lastName: lastName.trim(), subscribe, requestId: requestId.current }),
         signal: AbortSignal.timeout(20000),
       })
       const result = await response.json()
@@ -58,7 +61,7 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
       if (!response.ok || result?.saved !== true) throw new Error('Not saved')
       onSubmit(email.trim())
     } catch {
-      setError('We couldn’t confirm your email was saved. Try again or continue to your results.')
+      setError('We couldn’t confirm your details were saved. Try again or continue to your results.')
     } finally {
       inFlight.current = false
       setSaving(false)
@@ -67,7 +70,7 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background font-sans text-foreground">
-      <VoraScreenHeader onReturn={() => { if (!inFlight.current) onBack() }} variant="onTheme" center={<VoraLogo />} />
+      <VoraScreenHeader onReturn={() => { if (!inFlight.current) onBack() }} variant="onTheme" center={<VoraLogo design="figma" />} />
 
       <div className="flex flex-1 flex-col items-center justify-center px-4 pb-[max(3rem,env(safe-area-inset-bottom))] sm:px-6">
         <motion.div
@@ -82,7 +85,7 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
           </h2>
           <p className="mb-8 text-[13px] leading-relaxed text-foreground/50">
             {availability === 'available'
-              ? <>Leave your email with VORA and view your results here. We won&apos;t email your results.</>
+              ? <>A little introduction, then your personalized style profile. Your results will appear right here.</>
               : <>Your results are ready to view here, on your device.</>}
           </p>
 
@@ -94,7 +97,18 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
             }}
             className="space-y-3 text-left"
           >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {([{ id: 'first-name', label: 'Name', value: firstName, set: setFirstName, autocomplete: 'given-name' },
+                { id: 'last-name', label: 'Surname', value: lastName, set: setLastName, autocomplete: 'family-name' }] as const).map(field => <label key={field.id} className="block text-xs text-foreground/70">
+                <span className="mb-2 block">{field.label}</span>
+                <input id={field.id} type="text" autoComplete={field.autocomplete} maxLength={80} required disabled={saving} value={field.value}
+                  onChange={event => { field.set(event.target.value); requestId.current = null; setError(null) }}
+                  className="h-[50px] w-full rounded-[10px] border border-white/[0.18] bg-white/[0.02] px-4 text-sm text-foreground outline-none focus:border-foreground" />
+              </label>)}
+            </div>
+            <label htmlFor="lead-email" className="block text-xs text-foreground/70">Email</label>
             <input
+              id="lead-email"
               type="email"
               inputMode="email"
               autoComplete="email"
@@ -106,13 +120,17 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
               onChange={(e) => { setEmail(e.target.value); requestId.current = null; setError(null) }}
               onBlur={() => setTouched(true)}
               aria-label="Email address"
-              aria-invalid={touched && !valid}
+              aria-invalid={touched && !validLeadEmail(email.trim())}
               aria-describedby="lead-privacy"
               className="h-[50px] w-full rounded-[10px] border border-white/[0.18] bg-white/[0.02] px-4 text-sm text-foreground outline-none transition-[border-color,background-color] duration-300 placeholder:text-foreground/30 focus:border-foreground focus:bg-white/[0.04]"
             />
             {touched && !valid && (
-              <p className="px-1 text-[11px] text-rose-300/80">Please enter a valid email.</p>
+              <p className="px-1 text-[11px] text-rose-300/80">Please check your name, surname and email.</p>
             )}
+            <label className="flex min-h-12 items-start gap-3 py-3 text-xs leading-5 text-foreground/70">
+              <input type="checkbox" checked={subscribe} disabled={saving} onChange={event => { setSubscribe(event.target.checked); requestId.current = null; setError(null) }} className="mt-0.5 h-4 w-4 shrink-0 accent-white" />
+              <span>Subscribe and be on the know. We promise we won&apos;t spam.</span>
+            </label>
             {error && <p role="alert" className="px-1 text-xs leading-relaxed text-rose-300">{error}</p>}
             <motion.button
               type="submit"
@@ -122,12 +140,12 @@ export function EmailGateScreen({ onSubmit, onBack }: EmailGateScreenProps) {
               whileHover={!valid || prefersReducedMotion ? undefined : { scale: 1.01 }}
               whileTap={!valid || prefersReducedMotion ? undefined : { scale: 0.99 }}
             >
-              {saving ? 'Saving your email…' : 'Save email & see results'}
+              {saving ? 'Saving your details…' : 'Reveal my results'}
             </motion.button>
           </form>
 
           <p id="lead-privacy" className="mt-6 text-[11px] leading-relaxed text-foreground/50">
-            By saving your email, you agree that VORA saves your email and registration date in its private Google Sheet. Your photos and measurements stay on your device.{' '}
+            VORA saves your name, surname, email, subscription choice and registration date in its private Google Sheet. Subscribing is optional. Your photos and measurements stay on your device; results are not sent by email.{' '}
             <Link href="/privacy" className="underline underline-offset-4">Privacy notice</Link>
           </p>
           {error && <button type="button" onClick={() => onSubmit(null)} className="mt-5 min-h-11 text-xs text-foreground/65 underline underline-offset-4">Continue to my results</button>}

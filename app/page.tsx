@@ -16,6 +16,7 @@ import { VoraLogo } from '@/components/vora/vora-logo'
 import { type BodyAnalysis, buildAnalysisFromBodyType } from '@/lib/body-type-analysis'
 import { analyzeMeasurements, buildAnalysisFromClassification, type ManualMeasurements } from '@/lib/analyze'
 import { createPhotoAnalyzer, type PhotoMeasureResult } from '@/lib/photo-flow'
+import { decodeProfile, encodeProfile, PROFILE_SESSION_KEY } from '@/lib/profile-session'
 
 type Step =
   | 'intro'      // Entry screen: "WE KNOW ONLINE FITTING IS A STRUGGLE"
@@ -48,6 +49,23 @@ export default function VoraApp() {
   // Show the loading splash from the very first paint so it covers the page,
   // then reveal the app — instead of flashing the page first.
   const [showIntro, setShowIntro] = useState(true)
+
+  useEffect(() => {
+    try {
+      const saved = decodeProfile(sessionStorage.getItem(PROFILE_SESSION_KEY))
+      if (saved) {
+        setAnalysisResult(saved.analysis)
+        setEmailProvided(true)
+        setStep(saved.view)
+      } else sessionStorage.removeItem(PROFILE_SESSION_KEY)
+    } catch { /* A restricted browser can still complete the quiz. */ }
+  }, [])
+
+  useEffect(() => {
+    if (!analysisResult || (step !== 'results' && step !== 'recommendations')) return
+    try { sessionStorage.setItem(PROFILE_SESSION_KEY, encodeProfile(analysisResult, step)) } catch { /* optional session continuity */ }
+    setLibraryFiles([])
+  }, [analysisResult, step])
 
   useEffect(() => { window.scrollTo(0, 0) }, [step])
 
@@ -171,16 +189,6 @@ export default function VoraApp() {
     [waitRemaining]
   )
 
-  const handleRedo = useCallback(() => {
-    analysisRun.current += 1
-    setLibraryFiles([])
-    setStep('intro')
-    setUploadBackStep('intro')
-    setAnalysisResult(null)
-    setIsAnalysisComplete(false)
-    setPhotoIssue(null)
-  }, [])
-
   const goToUpload = useCallback((returnStep: Step) => {
     setUploadBackStep(returnStep)
     setStep('upload')
@@ -245,19 +253,18 @@ export default function VoraApp() {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={step}
-            initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 14, filter: 'blur(14px)' }}
-            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }}
-            exit={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: -10, filter: 'blur(14px)' }}
+            initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: 14 }}
+            animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            exit={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, y: -10 }}
             transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
             className="min-h-screen"
           >
             {step === 'intro' && (
               <IntroScreen
-                onBack={() => {
-                  if (typeof window !== 'undefined') window.history.back()
-                }}
+                onBack={() => { window.location.href = '/' }}
                 onUploadPhotos={() => goToUpload('intro')}
                 onEnterMeasurements={() => setStep('measurements')}
+                onTakePhoto={() => setStep('camera')}
               />
             )}
 
@@ -311,8 +318,7 @@ export default function VoraApp() {
             {step === 'results' && analysisResult && (
               <ResultsScreen
                 analysis={analysisResult}
-                onRedo={handleRedo}
-                onRefineMeasurements={() => setStep('measurements')}
+                onHome={() => { window.location.href = '/' }}
                 onShowRecommendations={() => setStep('recommendations')}
               />
             )}
@@ -321,7 +327,6 @@ export default function VoraApp() {
               <StyleRecommendationsScreen
                 analysis={analysisResult}
                 onBack={() => setStep('results')}
-                onRedo={handleRedo}
               />
             )}
           </motion.div>

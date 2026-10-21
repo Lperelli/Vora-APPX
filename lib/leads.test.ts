@@ -5,8 +5,10 @@ import { createLeadHandler, createLeadStatusHandler } from './lead-handler'
 
 const requestId = '136f9ead-9914-40a1-9654-39b33a0a2f00'
 const url = 'https://script.google.com/macros/s/test-deployment/exec'
-const env = { VORA_LEADS_WEBHOOK_URL: url, VORA_LEADS_WEBHOOK_SECRET: 'test-secret' }
-function request(body: unknown = { email: ' Test@Example.com ', requestId }, origin = 'https://vora-blog.webflow.io') {
+const legal = { NEXT_PUBLIC_VORA_TERMS_URL: 'https://vora.example/terms', NEXT_PUBLIC_VORA_PRIVACY_URL: 'https://vora.example/privacy', NEXT_PUBLIC_VORA_LEGAL_VERSION: '2026-10-test' }
+const contact = { firstName: 'Test', lastName: 'Visitor', subscribe: false }
+const env = { ...legal, VORA_LEADS_WEBHOOK_URL: url, VORA_LEADS_WEBHOOK_SECRET: 'test-secret' }
+function request(body: unknown = { ...contact, email: ' Test@Example.com ', requestId }, origin = 'https://vora-blog.webflow.io') {
   return new Request('https://vora-blog.webflow.io/app/api/leads', {
     method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin }, body: JSON.stringify(body),
   })
@@ -16,6 +18,7 @@ afterEach(() => vi.restoreAllMocks())
 describe('lead availability', () => {
   it.each([
     {},
+    { ...env, NEXT_PUBLIC_VORA_LEGAL_VERSION: undefined },
     { VORA_LEADS_WEBHOOK_URL: url },
     { ...env, VORA_LEADS_WEBHOOK_URL: 'https://other.example/exec' },
     { ...env, VORA_LEADS_WEBHOOK_URL: `${url}?token=private` },
@@ -42,13 +45,16 @@ describe('lead registration server', () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ saved: true })
     expect(response.headers.get('cache-control')).toBe('no-store')
-    expect(JSON.parse(upstream.mock.calls[0][1]!.body as string)).toEqual({ email: 'test@example.com', requestId, token: 'test-secret', source: 'vora-app' })
+    expect(JSON.parse(upstream.mock.calls[0][1]!.body as string)).toEqual({ ...contact, email: 'test@example.com', requestId, token: 'test-secret', source: 'vora-app', legalVersion: legal.NEXT_PUBLIC_VORA_LEGAL_VERSION })
   })
   it.each([
     { email: 'invalid', requestId },
     { email: 'a@example.com', requestId: 'invalid' },
     { email: 'a@example.com', requestId, photo: 'private' },
     { email: 'a\u0000@example.com', requestId },
+    { ...contact, email: 'a@example.com', requestId, subscribe: 'true' },
+    { ...contact, email: 'a@example.com', requestId, firstName: '' },
+    { ...contact, email: 'a@example.com', requestId, lastName: 'x'.repeat(81) },
     null,
   ])('rejects invalid or excessive fields without forwarding them', async body => {
     const upstream = vi.fn<typeof fetch>()
@@ -87,7 +93,7 @@ describe('lead registration server', () => {
 
 /** In-memory Sheets contract: exercise the actual deployed script, including deduplication. */
 function receiver() {
-  const rows: unknown[][] = [['Email', 'Fecha de registro (UTC)', 'Origen', 'ID de solicitud']]
+  const rows: unknown[][] = [['Email', 'Fecha de registro (UTC)', 'Origen', 'ID de solicitud', 'Nombre', 'Apellido', 'Suscripcion', 'Version legal']]
   const open = vi.fn()
   const flush = vi.fn()
   const releaseLock = vi.fn()
@@ -122,7 +128,7 @@ function receiver() {
   const source = readFileSync(new URL('../integrations/google-sheets/Code.gs', import.meta.url), 'utf8')
   const post = runInNewContext(`${source}\ndoPost`, context) as (event: object) => { ok: boolean; requestId?: string }
   const send = (body: object) => post({ postData: { contents: JSON.stringify(body) } })
-  const payload = { email: 'test@example.com', requestId, token: 'test-secret', source: 'vora-app' }
+  const payload = { ...contact, email: 'test@example.com', requestId, token: 'test-secret', source: 'vora-app', legalVersion: legal.NEXT_PUBLIC_VORA_LEGAL_VERSION }
   return { send, payload, rows, open, flush, tryLock, releaseLock }
 }
 
@@ -135,8 +141,17 @@ describe('Google Sheets receiver', () => {
     expect(script.send({ ...script.payload, email: 'TEST@EXAMPLE.COM', requestId: nextId })).toEqual({ ok: true, requestId: nextId })
     expect(script.rows).toHaveLength(2)
     expect(Object.prototype.toString.call(script.rows[1][1])).toBe('[object Date]')
-    expect(script.flush).toHaveBeenCalledOnce()
+    expect(script.flush).toHaveBeenCalledTimes(2)
     expect(script.releaseLock).toHaveBeenCalledTimes(3)
+  })
+  it('updates subscription only from an explicit new choice, without duplicate leads', () => {
+    const script = receiver()
+    script.send({ ...script.payload, subscribe: true })
+    expect(script.rows[1][6]).toBe(true)
+    const nextId = '236f9ead-9914-40a1-9654-39b33a0a2f00'
+    expect(script.send({ ...script.payload, subscribe: false, requestId: nextId }).ok).toBe(true)
+    expect(script.rows).toHaveLength(2)
+    expect(script.rows[1][6]).toBe(false)
   })
   it('rejects a mismatched retry, wrong secret and busy writer without adding a row', () => {
     const script = receiver()
