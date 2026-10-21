@@ -88,8 +88,7 @@ const SHOW_CELEBRITIES_IN_MVP = true
 
 interface ResultsScreenProps {
   analysis: BodyAnalysis
-  onRedo: () => void
-  onRefineMeasurements: () => void
+  onHome: () => void
   /** Opens the editorial style-recommendations screen (Figma 327:423). */
   onShowRecommendations: () => void
 }
@@ -98,14 +97,14 @@ interface ResultsScreenProps {
  * Figma-aligned results (Frame 98, 545px): silhouette card → what works for you → celebrity
  * references with per-card 3D Y flip revealed in sequence when the block scrolls into view.
  */
-export function ResultsScreen({ analysis, onRedo, onRefineMeasurements, onShowRecommendations }: ResultsScreenProps) {
+export function ResultsScreen({ analysis, onHome, onShowRecommendations }: ResultsScreenProps) {
   const prefersReducedMotion = useReducedMotion()
   const silhouette = silhouetteForBodyType(analysis.bodyType)
   const label = analysis.bodyTypeLabel
 
   return (
     <motion.div
-      className="flex min-h-[100dvh] flex-col items-stretch overflow-x-hidden bg-background px-3 pb-32 pt-0 sm:px-6 sm:pb-28"
+      className="flex min-h-[100dvh] flex-col items-stretch overflow-x-hidden bg-background px-3 pb-14 pt-0 sm:px-6 sm:pb-20"
       initial={prefersReducedMotion ? false : { opacity: 0 }}
       animate={prefersReducedMotion ? undefined : { opacity: 1 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
@@ -116,7 +115,7 @@ export function ResultsScreen({ analysis, onRedo, onRefineMeasurements, onShowRe
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="mb-4 sm:mb-6"
       >
-        <VoraScreenHeader onReturn={onRedo} variant="onTheme" center={<VoraLogo design="figma" />} />
+        <VoraScreenHeader onReturn={onHome} variant="onTheme" center={<VoraLogo design="figma" />} />
       </motion.div>
 
       {/* ── Intro copy ─────────────────────────────────────────── */}
@@ -135,11 +134,9 @@ export function ResultsScreen({ analysis, onRedo, onRefineMeasurements, onShowRe
         {analysis.analysisSource === 'photo' && (
           <div className="mx-auto max-w-[420px] px-3 text-[12px] leading-relaxed text-foreground/60">
             <p>{analysis.confidence === 'low'
-              ? 'This is a starting point: your photo could fit more than one silhouette. Explore these ideas, or refine your profile with measurements.'
+              ? 'This is a starting point: your photo could fit more than one silhouette. Use these ideas as inspiration, not a definitive label.'
               : 'A photo gives an estimate of your shape, not exact body measurements.'}</p>
-            <button type="button" onClick={onRefineMeasurements} className="mt-1 min-h-11 underline underline-offset-4 text-foreground/85 hover:text-foreground">
-              Refine with measurements
-            </button>
+
           </div>
         )}
       </motion.div>
@@ -206,37 +203,17 @@ export function ResultsScreen({ analysis, onRedo, onRefineMeasurements, onShowRe
         <motion.button
           type="button"
           onClick={onShowRecommendations}
-          className="mx-auto mt-2 flex min-h-[48px] w-full max-w-[min(100%,520px)] items-center justify-center gap-2 rounded-full border border-white/12 bg-[oklch(0.14_0_0)] px-4 py-3 text-center text-[9px] uppercase leading-snug tracking-[0.16em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)] sm:w-auto sm:gap-2.5 sm:px-7 sm:py-3.5 sm:text-[11px] sm:leading-normal sm:tracking-[0.22em]"
+          className="mx-auto mt-2 flex min-h-[48px] w-full max-w-[min(100%,520px)] items-center justify-center gap-2 rounded-full border border-white bg-white px-4 py-3 text-center text-[9px] uppercase leading-snug tracking-[0.16em] text-black transition-colors hover:bg-white/90 sm:w-auto sm:gap-2.5 sm:px-7 sm:py-3.5 sm:text-[11px] sm:leading-normal sm:tracking-[0.22em]"
           initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
           animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1], delay: 0.6 }}
           whileHover={prefersReducedMotion ? undefined : { scale: 1.015 }}
           whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
         >
-          <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]" />
           Unveil style recommendations for you
         </motion.button>
       </div>
 
-      {/* ── Sticky REDO / E-MAIL ───────────────────────────────── */}
-      <motion.div
-        className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 bg-background/95 px-4 pt-4 backdrop-blur-sm pb-[max(1rem,env(safe-area-inset-bottom))]"
-        initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
-        animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
-      >
-        <div className={`flex ${VORA_RESULTS_MAX}`}>
-          <motion.button
-            type="button"
-            onClick={onRedo}
-            className="w-full rounded-full border border-foreground/20 bg-transparent py-3.5 text-xs uppercase tracking-[0.22em] text-foreground transition-colors hover:bg-foreground/5"
-            whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
-            whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
-          >
-            Redo
-          </motion.button>
-        </div>
-      </motion.div>
     </motion.div>
   )
 }

@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { Clock, Upload } from 'lucide-react'
+import { useState } from 'react'
+import { Camera, Clock, Ruler, Upload } from 'lucide-react'
+import { LEGAL_DOCUMENTS } from '@/lib/legal-consent'
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
@@ -11,10 +13,13 @@ interface IntroScreenProps {
   onBack: () => void
   onUploadPhotos: () => void
   onEnterMeasurements: () => void
+  onTakePhoto: () => void
 }
 
-export function IntroScreen({ onBack, onUploadPhotos, onEnterMeasurements }: IntroScreenProps) {
+export function IntroScreen({ onBack, onUploadPhotos, onEnterMeasurements, onTakePhoto }: IntroScreenProps) {
   const prefersReducedMotion = useReducedMotion()
+  const [accepted, setAccepted] = useState(false)
+  const canContinue = !LEGAL_DOCUMENTS || accepted
 
   const container: Variants = {
     hidden: {},
@@ -37,7 +42,7 @@ export function IntroScreen({ onBack, onUploadPhotos, onEnterMeasurements }: Int
       animate={prefersReducedMotion ? undefined : 'show'}
     >
       <motion.div variants={item} className="w-full shrink-0">
-        <VoraScreenHeader onReturn={onBack} variant="onTheme" center={<VoraLogo />} />
+        <VoraScreenHeader onReturn={onBack} variant="onTheme" center={<VoraLogo design="figma" />} />
       </motion.div>
 
       <div
@@ -59,22 +64,38 @@ export function IntroScreen({ onBack, onUploadPhotos, onEnterMeasurements }: Int
         <motion.div className="mx-auto flex w-full max-w-md flex-col gap-4 px-1 lg:max-w-lg" variants={item}>
           <motion.button
             onClick={onUploadPhotos}
-            className="flex w-full min-h-[48px] items-center justify-center gap-3 rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-5 py-4 text-xs uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)] sm:px-6"
+            disabled={!canContinue}
+            className="flex w-full min-h-[48px] items-center justify-center gap-3 rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-5 py-4 text-xs uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)] disabled:opacity-40 sm:px-6"
             whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
             whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
           >
             <Upload className="w-4 h-4" />
-            Upload Photos
+            Upload pictures
           </motion.button>
-          <p className="text-xs text-muted-foreground text-center tracking-widest uppercase">or</p>
+          <p className="-mt-2 text-[11px] text-foreground/50">Choose three full-body photos from your library.</p>
           <motion.button
             onClick={onEnterMeasurements}
-            className="flex w-full min-h-[48px] items-center justify-center gap-3 rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-5 py-4 text-xs uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)] sm:px-6"
+            disabled={!canContinue}
+            className="flex w-full min-h-[48px] items-center justify-center gap-3 rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-5 py-4 text-xs uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)] disabled:opacity-40 sm:px-6"
             whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
             whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
           >
-            Enter Measurements
+            <Ruler className="h-4 w-4 shrink-0" /> Enter Measurements
           </motion.button>
+          <motion.button
+            onClick={onTakePhoto}
+            disabled={!canContinue}
+            className="flex w-full min-h-[48px] items-center justify-center gap-3 rounded-full border border-foreground/20 bg-[oklch(0.14_0_0)] px-5 py-4 text-xs uppercase tracking-[0.16em] text-foreground transition-colors hover:bg-[oklch(0.18_0_0)] disabled:opacity-40 sm:px-6"
+            whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
+            whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
+          >
+            <Camera className="h-4 w-4 shrink-0" /> Take a Photo with Our Guided Frame
+          </motion.button>
+          <p className="-mt-2 text-[11px] text-foreground/50">One live photo. Capture instantly or use the 10-second timer.</p>
+          {LEGAL_DOCUMENTS && <label className="mt-3 flex items-start gap-3 text-left text-xs leading-6 text-foreground/70">
+            <input type="checkbox" checked={accepted} onChange={event => setAccepted(event.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-white" />
+            <span>I agree to VORA&apos;s <a href={LEGAL_DOCUMENTS.terms} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">Terms of Use</a> and acknowledge that I have read the <a href={LEGAL_DOCUMENTS.privacy} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">Privacy Policy</a>.</span>
+          </label>}
         </motion.div>
       </div>
 

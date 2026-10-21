@@ -11,17 +11,24 @@ import { VoraScreenHeader } from './screen-return-button'
 import { VORA_RECOMMENDATIONS_MAX, VORA_RESULTS_MAX } from './vora-layout'
 import { asset } from '@/lib/base-path'
 
+// The source files include baked-in side padding. Crop only that padding,
+// preserving each garment's full height and original proportions.
+function productImageAspect(image: string) {
+  if (image.includes('abercrombie-sloane')) return '4 / 5'
+  if (image.includes('zara-belted-wool')) return '3 / 4'
+  return '2 / 3'
+}
+
 interface StyleRecommendationsScreenProps {
   analysis: BodyAnalysis
   onBack: () => void
-  onRedo: () => void
 }
 
 /**
  * Figma 327:423 — editorial "Your top 5 must haves" page reached from the
  * "Unveil style recommendations" CTA. Curated product cards per body type.
  */
-export function StyleRecommendationsScreen({ analysis, onBack, onRedo }: StyleRecommendationsScreenProps) {
+export function StyleRecommendationsScreen({ analysis, onBack }: StyleRecommendationsScreenProps) {
   const prefersReducedMotion = useReducedMotion()
   const label = analysis.bodyTypeLabel
   const products = analysis.styleProducts ?? []
@@ -46,7 +53,7 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRedo }: StyleRe
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="mb-4 sm:mb-6"
       >
-        <VoraScreenHeader onReturn={onBack} variant="onTheme" center={<VoraLogo />} />
+        <VoraScreenHeader onReturn={onBack} variant="onTheme" center={<VoraLogo design="figma" />} />
       </motion.div>
 
       {/* ── Editorial header ───────────────────────────────────── */}
@@ -65,6 +72,8 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRedo }: StyleRe
         </p>
       </motion.header>
 
+      <p className="mx-auto mb-6 max-w-md px-4 text-center text-[11px] leading-6 text-foreground/50">Stores open in a new tab. Your VORA profile stays here, ready when you return.</p>
+
       {/* ── Product list ───────────────────────────────────────── */}
       <div className={`${VORA_RECOMMENDATIONS_MAX} grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-7`}>
         {products.map((product, i) => (
@@ -76,7 +85,7 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRedo }: StyleRe
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.04 * i }}
           >
-            <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-black">
+            <div className="relative w-full shrink-0 overflow-hidden bg-black" style={{ aspectRatio: productImageAspect(product.image) }}>
               <Image
                 src={asset(product.image)}
                 alt={product.name}
@@ -102,7 +111,7 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRedo }: StyleRe
                   rel="noopener noreferrer"
                   className="inline-flex h-10 w-fit items-center justify-center rounded-full border border-white/12 bg-[oklch(0.16_0_0)] px-6 text-[9px] uppercase tracking-[0.22em] text-foreground transition-colors hover:bg-[oklch(0.22_0_0)]"
                 >
-                  Shop
+                  Shop <ArrowUpRight aria-hidden="true" className="ml-2 h-3 w-3" /><span className="sr-only"> — opens the retailer in a new tab</span>
                 </a>
               ) : (
                 <span className="inline-flex h-10 w-fit items-center justify-center rounded-full border border-white/[0.07] px-6 text-[9px] uppercase tracking-[0.2em] text-foreground/32">
@@ -172,7 +181,7 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRedo }: StyleRe
         </motion.section>
       )}
 
-      {/* ── Sticky REDO ────────────────────────────────────────── */}
+      {/* ── Return to saved profile ────────────────────────────────────────── */}
       <motion.div
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 bg-background/95 px-4 pt-4 backdrop-blur-sm pb-[max(1rem,env(safe-area-inset-bottom))]"
         initial={prefersReducedMotion ? false : { opacity: 0, y: 16 }}
@@ -182,12 +191,12 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRedo }: StyleRe
         <div className={`flex ${VORA_RESULTS_MAX}`}>
           <motion.button
             type="button"
-            onClick={onRedo}
+            onClick={onBack}
             className="w-full rounded-full border border-foreground/20 bg-transparent py-3.5 text-xs uppercase tracking-[0.22em] text-foreground transition-colors hover:bg-foreground/5"
             whileHover={prefersReducedMotion ? undefined : { scale: 1.012 }}
             whileTap={prefersReducedMotion ? undefined : { scale: 0.99 }}
           >
-            Redo
+            Back to my profile
           </motion.button>
         </div>
       </motion.div>
