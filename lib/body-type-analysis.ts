@@ -25,6 +25,9 @@ export const StyleProductSchema = z.object({
   /** First-person styling note shown beside the product (Figma 327:440). */
   stylingNote: z.string(),
   shopUrl: z.string().optional(),
+  id: z.string().optional(),
+  imageAspectRatio: z.enum(['2 / 3', '3 / 4', '4 / 5']).optional(),
+  isAffiliate: z.boolean().optional(),
 })
 
 export type StyleProduct = z.infer<typeof StyleProductSchema>

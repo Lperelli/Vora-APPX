@@ -1,0 +1,283 @@
+{
+  "products": [
+    {
+      "slug": "zara-z1975-hi-rise-straight-jeans",
+      "name": "Z1975 High-Rise Straight Jeans",
+      "brand": "Zara",
+      "image": "https://cdn.prod.website-files.com/69d083806c31fde4aa05b52f/6ac45c65a6e6f46028972a3c_6ac45bdbd23cf1d6de3472d4_VORA%2520Zara%2520Z1975%2520High-Rise%2520Straight%2520Jeans.webp",
+      "storeUrl": "https://www.zara.com/us/en/z1975-hi-rise-straight-jeans-p01934041.html",
+      "price": "View current price",
+      "market": "US",
+      "active": true,
+      "imageAspectRatio": "2 / 3"
+    },
+    {
+      "slug": "abercrombie-sloane-wide-leg-pant",
+      "name": "A&F Sloane Tailored Wide-Leg Pant",
+      "brand": "Abercrombie & Fitch",
+      "image": "https://cdn.prod.website-files.com/69d083806c31fde4aa05b52f/6ac45c65a6e6f46028972a48_6ac45be90101d526034886c6_VORA%2520A%2526F%2520Sloane%2520Tailored%2520Wide-Leg%2520Pant.webp",
+      "storeUrl": "https://www.abercrombie.com/shop/us/p/tailored-wide-leg-pants-51625331",
+      "price": "View current price",
+      "market": "US",
+      "active": true,
+      "imageAspectRatio": "4 / 5"
+    },
+    {
+      "slug": "hm-wrap-dress",
+      "name": "Wrap Dress",
+      "brand": "H&M",
+      "image": "https://cdn.prod.website-files.com/69d083806c31fde4aa05b52f/6a8f65a14b3b6fa2bd5d6ddc_6a8f5fd418e8b98219fe0581_apple-body-shape-wrap-dress.webp",
+      "storeUrl": "https://www2.hm.com/en_us/productpage.1285149003.html",
+      "price": "View current price",
+      "market": "US",
+      "active": true,
+      "imageAspectRatio": "2 / 3"
+    },
+    {
+      "slug": "zara-belted-wool-blazer",
+      "name": "Belted Wool Blazer",
+      "brand": "Zara Pre-Owned",
+      "image": "https://cdn.prod.website-files.com/69d083806c31fde4aa05b52f/6ac45c65a6e6f46028972a66_zara-belted-wool-blazer.webp",
+      "storeUrl": "https://www.zara.com/us/en/preowned-resell/product-detail/1713554",
+      "price": "View current price",
+      "market": "US",
+      "active": true,
+      "imageAspectRatio": "3 / 4"
+    },
+    {
+      "slug": "zara-striped-pleated-balloon-pants",
+      "name": "Striped Pleated Balloon Pants",
+      "brand": "Zara",
+      "image": "https://cdn.prod.website-files.com/69d083806c31fde4aa05b52f/6ac45c65a6e6f46028972a45_6ac45c059b7d3556e39af355_VORA%2520Zara%2520Striped%2520Pleated%2520Balloon%2520Pants.webp",
+      "storeUrl": "https://www.zara.com/us/en/striped-pleated-balloon-pants-p01255527.html",
+      "price": "View current price",
+      "market": "US",
+      "active": true,
+      "imageAspectRatio": "2 / 3"
+    },
+    {
+      "slug": "hm-relaxed-button-down-shirt",
+      "name": "Relaxed Button-Down Shirt",
+      "brand": "H&M",
+      "image": "https://cdn.prod.website-files.com/69d083806c31fde4aa05b52f/6ac45c65a6e6f46028972a39_6ac45ba9a4b005f7cbdefd91_VORA%2520H%2526M%2520Relaxed%2520Button-Down%2520Shirt.webp",
+      "storeUrl": "https://www2.hm.com/en_us/productpage.1344514001.html",
+      "price": "View current price",
+      "market": "US",
+      "active": true,
+      "imageAspectRatio": "2 / 3"
+    },
+    {
+      "slug": "zara-curved-straight-jeans",
+      "name": "ZW Collection Curved Straight Jeans",
+      "brand": "Zara",
+      "image": "https://cdn.prod.website-files.com/69d083806c31fde4aa05b52f/6ac45c65a6e6f46028972a42_6ac45c18f3f30609869902a0_VORA%2520Zara%2520ZW%2520Collection%2520Curved%2520Straight%2520Jeans.webp",
+      "storeUrl": "https://www.zara.com/us/en/zw-collection-curved-straight-mid-rise-jeans-p09632273.html",
+      "price": "View current price",
+      "market": "US",
+      "active": true,
+      "imageAspectRatio": "2 / 3"
+    }
+  ],
+  "picks": [
+    {
+      "slug": "hourglass-zara-z1975-hi-rise-straight-jeans",
+      "name": "hourglass — Z1975 High-Rise Straight Jeans",
+      "productSlug": "zara-z1975-hi-rise-straight-jeans",
+      "bodyType": "hourglass",
+      "order": 1,
+      "stylingNote": "A clean high rise keeps the waist as the focal point.",
+      "articleId": "6a4533d78c3558f8c608fb4a",
+      "active": true
+    },
+    {
+      "slug": "hourglass-abercrombie-sloane-wide-leg-pant",
+      "name": "hourglass — A&F Sloane Tailored Wide-Leg Pant",
+      "productSlug": "abercrombie-sloane-wide-leg-pant",
+      "bodyType": "hourglass",
+      "order": 2,
+      "stylingNote": "A structured waist and wider leg preserve your natural balance.",
+      "articleId": "6a4533d78c3558f8c608fb4a",
+      "active": true
+    },
+    {
+      "slug": "hourglass-hm-wrap-dress",
+      "name": "hourglass — Wrap Dress",
+      "productSlug": "hm-wrap-dress",
+      "bodyType": "hourglass",
+      "order": 3,
+      "stylingNote": "The wrap construction follows the waist without hiding it.",
+      "articleId": "6a4533d78c3558f8c608fb4a",
+      "active": true
+    },
+    {
+      "slug": "hourglass-zara-belted-wool-blazer",
+      "name": "hourglass — Belted Wool Blazer",
+      "productSlug": "zara-belted-wool-blazer",
+      "bodyType": "hourglass",
+      "order": 4,
+      "stylingNote": "The belt creates definition while the soft tailoring follows your curves.",
+      "articleId": "6a4533d78c3558f8c608fb4a",
+      "active": true
+    },
+    {
+      "slug": "hourglass-zara-striped-pleated-balloon-pants",
+      "name": "hourglass — Striped Pleated Balloon Pants",
+      "productSlug": "zara-striped-pleated-balloon-pants",
+      "bodyType": "hourglass",
+      "order": 5,
+      "stylingNote": "A fitted waist and full leg keep the top-to-bottom balance intact.",
+      "articleId": "6a4533d78c3558f8c608fb4a",
+      "active": true
+    },
+    {
+      "slug": "rectangle-hm-relaxed-button-down-shirt",
+      "name": "rectangle — Relaxed Button-Down Shirt",
+      "productSlug": "hm-relaxed-button-down-shirt",
+      "bodyType": "rectangle",
+      "order": 1,
+      "stylingNote": "The relaxed line adds dimension while the buttons lead the eye vertically.",
+      "articleId": "6a4546552a5664ce4531e086",
+      "active": true
+    },
+    {
+      "slug": "rectangle-zara-striped-pleated-balloon-pants",
+      "name": "rectangle — Striped Pleated Balloon Pants",
+      "productSlug": "zara-striped-pleated-balloon-pants",
+      "bodyType": "rectangle",
+      "order": 2,
+      "stylingNote": "Pleats add gentle hip volume and a clear waist break.",
+      "articleId": "6a4546552a5664ce4531e086",
+      "active": true
+    },
+    {
+      "slug": "rectangle-abercrombie-sloane-wide-leg-pant",
+      "name": "rectangle — A&F Sloane Tailored Wide-Leg Pant",
+      "productSlug": "abercrombie-sloane-wide-leg-pant",
+      "bodyType": "rectangle",
+      "order": 3,
+      "stylingNote": "A tailored waistband creates shape while the leg adds movement.",
+      "articleId": "6a4546552a5664ce4531e086",
+      "active": true
+    },
+    {
+      "slug": "rectangle-zara-curved-straight-jeans",
+      "name": "rectangle — ZW Collection Curved Straight Jeans",
+      "productSlug": "zara-curved-straight-jeans",
+      "bodyType": "rectangle",
+      "order": 4,
+      "stylingNote": "The curved cut builds dimension through the hip and leg.",
+      "articleId": "6a4546552a5664ce4531e086",
+      "active": true
+    },
+    {
+      "slug": "rectangle-zara-belted-wool-blazer",
+      "name": "rectangle — Belted Wool Blazer",
+      "productSlug": "zara-belted-wool-blazer",
+      "bodyType": "rectangle",
+      "order": 5,
+      "stylingNote": "The belt adds instant structure and creates waist definition.",
+      "articleId": "6a4546552a5664ce4531e086",
+      "active": true
+    },
+    {
+      "slug": "triangle-hm-relaxed-button-down-shirt",
+      "name": "triangle — Relaxed Button-Down Shirt",
+      "productSlug": "hm-relaxed-button-down-shirt",
+      "bodyType": "triangle",
+      "order": 1,
+      "stylingNote": "The crisp collar and lighter color draw attention upward.",
+      "articleId": "6a453c5cd8c137c4a7c433ed",
+      "active": true
+    },
+    {
+      "slug": "triangle-zara-z1975-hi-rise-straight-jeans",
+      "name": "triangle — Z1975 High-Rise Straight Jeans",
+      "productSlug": "zara-z1975-hi-rise-straight-jeans",
+      "bodyType": "triangle",
+      "order": 2,
+      "stylingNote": "A clean straight leg skims the lower half without clinging.",
+      "articleId": "6a453c5cd8c137c4a7c433ed",
+      "active": true
+    },
+    {
+      "slug": "triangle-zara-striped-pleated-balloon-pants",
+      "name": "triangle — Striped Pleated Balloon Pants",
+      "productSlug": "zara-striped-pleated-balloon-pants",
+      "bodyType": "triangle",
+      "order": 3,
+      "stylingNote": "Fluid volume falls from a defined waist and moves away from the hip.",
+      "articleId": "6a453c5cd8c137c4a7c433ed",
+      "active": true
+    },
+    {
+      "slug": "triangle-abercrombie-sloane-wide-leg-pant",
+      "name": "triangle — A&F Sloane Tailored Wide-Leg Pant",
+      "productSlug": "abercrombie-sloane-wide-leg-pant",
+      "bodyType": "triangle",
+      "order": 4,
+      "stylingNote": "A full-length tailored leg creates one long, balanced line.",
+      "articleId": "6a453c5cd8c137c4a7c433ed",
+      "active": true
+    },
+    {
+      "slug": "triangle-hm-wrap-dress",
+      "name": "triangle — Wrap Dress",
+      "productSlug": "hm-wrap-dress",
+      "bodyType": "triangle",
+      "order": 5,
+      "stylingNote": "The wrap defines the waist and the skirt releases cleanly over the hips.",
+      "articleId": "6a453c5cd8c137c4a7c433ed",
+      "active": true
+    },
+    {
+      "slug": "inverted-triangle-hm-relaxed-button-down-shirt",
+      "name": "inverted-triangle — Relaxed Button-Down Shirt",
+      "productSlug": "hm-relaxed-button-down-shirt",
+      "bodyType": "inverted-triangle",
+      "order": 1,
+      "stylingNote": "A fluid shoulder and open neckline soften the upper frame.",
+      "articleId": "6a453a1f6c03ae0f439a4d1a",
+      "active": true
+    },
+    {
+      "slug": "inverted-triangle-abercrombie-sloane-wide-leg-pant",
+      "name": "inverted-triangle — A&F Sloane Tailored Wide-Leg Pant",
+      "productSlug": "abercrombie-sloane-wide-leg-pant",
+      "bodyType": "inverted-triangle",
+      "order": 2,
+      "stylingNote": "The wide leg adds proportion below the hip.",
+      "articleId": "6a453a1f6c03ae0f439a4d1a",
+      "active": true
+    },
+    {
+      "slug": "inverted-triangle-zara-striped-pleated-balloon-pants",
+      "name": "inverted-triangle — Striped Pleated Balloon Pants",
+      "productSlug": "zara-striped-pleated-balloon-pants",
+      "bodyType": "inverted-triangle",
+      "order": 3,
+      "stylingNote": "Pleats and a balloon line bring movement to the lower half.",
+      "articleId": "6a453a1f6c03ae0f439a4d1a",
+      "active": true
+    },
+    {
+      "slug": "inverted-triangle-zara-curved-straight-jeans",
+      "name": "inverted-triangle — ZW Collection Curved Straight Jeans",
+      "productSlug": "zara-curved-straight-jeans",
+      "bodyType": "inverted-triangle",
+      "order": 4,
+      "stylingNote": "The curved cut builds a little more dimension through the hip.",
+      "articleId": "6a453a1f6c03ae0f439a4d1a",
+      "active": true
+    },
+    {
+      "slug": "inverted-triangle-hm-wrap-dress",
+      "name": "inverted-triangle — Wrap Dress",
+      "productSlug": "hm-wrap-dress",
+      "bodyType": "inverted-triangle",
+      "order": 5,
+      "stylingNote": "A softer top and fuller skirt redirect the eye below the shoulder.",
+      "articleId": "6a453a1f6c03ae0f439a4d1a",
+      "active": true
+    }
+  ]
+}

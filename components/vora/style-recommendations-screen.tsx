@@ -5,7 +5,8 @@ import { useMemo } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowUpRight } from 'lucide-react'
 import type { BodyAnalysis } from '@/lib/body-type-analysis'
-import { BODY_TYPE_ARTICLES } from '@/lib/body-type-articles'
+import { AFFILIATE_DISCLOSURE } from '@/lib/style-catalog'
+import { useStyleCatalog } from '@/lib/use-style-catalog'
 import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
 import { VORA_RECOMMENDATIONS_MAX, VORA_RESULTS_MAX } from './vora-layout'
@@ -33,8 +34,10 @@ interface StyleRecommendationsScreenProps {
 export function StyleRecommendationsScreen({ analysis, onBack, onRestart }: StyleRecommendationsScreenProps) {
   const prefersReducedMotion = useReducedMotion()
   const label = analysis.bodyTypeLabel
-  const products = analysis.styleProducts ?? []
-  const relatedArticle = BODY_TYPE_ARTICLES[analysis.bodyType]
+  const { catalog, error: catalogError, retry: retryCatalog } = useStyleCatalog()
+  const products = catalog?.byBodyType[analysis.bodyType] ?? []
+  const relatedArticle = catalog?.articlesByBodyType[analysis.bodyType]
+  const hasAffiliateLinks = products.some(product => product.isAffiliate)
 
   const dateLabel = useMemo(() => {
     return new Date()
@@ -75,19 +78,26 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRestart }: Styl
       </motion.header>
 
       <p className="mx-auto mb-6 max-w-md px-4 text-center text-[11px] leading-6 text-foreground/50">Stores open in a new tab. Your VORA profile stays here, ready when you return.</p>
+      {hasAffiliateLinks && <p className="mx-auto mb-6 max-w-md px-4 text-center text-[11px] leading-6 text-foreground/50">{AFFILIATE_DISCLOSURE}</p>}
+      {!catalog && !catalogError && <p role="status" className="mx-auto py-12 text-center text-xs text-foreground/60">Finding your style picks…</p>}
+      {catalogError && <div role="status" className="mx-auto max-w-md px-4 py-12 text-center text-xs leading-6 text-foreground/60">
+        <p>Your style profile is ready. The shopping picks are temporarily unavailable.</p>
+        <button type="button" onClick={retryCatalog} className="mt-4 min-h-[44px] rounded-full border border-foreground/20 px-6 text-[10px] uppercase tracking-[0.22em] text-foreground transition-colors hover:bg-foreground/5">Try again</button>
+      </div>}
+      {catalog && !products.length && <p className="mx-auto max-w-md px-4 py-12 text-center text-xs leading-6 text-foreground/60">Fresh picks are on their way. Explore your style profile while we curate the next edit.</p>}
 
       {/* ── Product list ───────────────────────────────────────── */}
       <div className={`${VORA_RECOMMENDATIONS_MAX} grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-7`}>
         {products.map((product, i) => (
           <motion.article
-            key={`${product.brand}-${product.name}`}
+            key={product.id ?? `${product.brand}-${product.name}`}
             className="flex min-w-0 flex-col overflow-hidden rounded-[4px] border border-white/[0.07] bg-[oklch(0.12_0_0)]"
             initial={prefersReducedMotion ? false : { opacity: 0, y: 16, filter: 'blur(10px)' }}
             whileInView={prefersReducedMotion ? undefined : { opacity: 1, y: 0, filter: 'blur(0px)' }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: 0.04 * i }}
           >
-            <div className="relative w-full shrink-0 overflow-hidden bg-black" style={{ aspectRatio: productImageAspect(product.image) }}>
+            <div className="relative w-full shrink-0 overflow-hidden bg-black" style={{ aspectRatio: product.imageAspectRatio ?? productImageAspect(product.image) }}>
               <Image
                 src={asset(product.image)}
                 alt={product.name}
@@ -110,7 +120,7 @@ export function StyleRecommendationsScreen({ analysis, onBack, onRestart }: Styl
                 <a
                   href={product.shopUrl}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel={product.isAffiliate ? 'sponsored noopener noreferrer' : 'noopener noreferrer'}
                   className="inline-flex h-10 w-fit items-center justify-center rounded-full border border-white/12 bg-[oklch(0.16_0_0)] px-6 text-[9px] uppercase tracking-[0.22em] text-foreground transition-colors hover:bg-[oklch(0.22_0_0)]"
                 >
                   Shop <ArrowUpRight aria-hidden="true" className="ml-2 h-3 w-3" /><span className="sr-only"> — opens the retailer in a new tab</span>
