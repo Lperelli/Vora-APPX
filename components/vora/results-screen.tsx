@@ -10,6 +10,7 @@ import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
 import { VORA_RESULTS_MAX } from './vora-layout'
 import { asset } from '@/lib/base-path'
+import { RetakeTestButton } from './retake-test-button'
 
 // ── Line-art silhouettes (one per BodyTypeId from API / presets) ──────────
 
@@ -88,7 +89,7 @@ const SHOW_CELEBRITIES_IN_MVP = true
 
 interface ResultsScreenProps {
   analysis: BodyAnalysis
-  onHome: () => void
+  onRestart: () => void
   /** Opens the editorial style-recommendations screen (Figma 327:423). */
   onShowRecommendations: () => void
 }
@@ -97,7 +98,7 @@ interface ResultsScreenProps {
  * Figma-aligned results (Frame 98, 545px): silhouette card → what works for you → celebrity
  * references with per-card 3D Y flip revealed in sequence when the block scrolls into view.
  */
-export function ResultsScreen({ analysis, onHome, onShowRecommendations }: ResultsScreenProps) {
+export function ResultsScreen({ analysis, onRestart, onShowRecommendations }: ResultsScreenProps) {
   const prefersReducedMotion = useReducedMotion()
   const silhouette = silhouetteForBodyType(analysis.bodyType)
   const label = analysis.bodyTypeLabel
@@ -115,7 +116,7 @@ export function ResultsScreen({ analysis, onHome, onShowRecommendations }: Resul
         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         className="mb-4 sm:mb-6"
       >
-        <VoraScreenHeader onReturn={onHome} variant="onTheme" center={<VoraLogo design="figma" />} />
+        <VoraScreenHeader onReturn={onRestart} variant="onTheme" center={<VoraLogo design="figma" />} />
       </motion.div>
 
       {/* ── Intro copy ─────────────────────────────────────────── */}
@@ -140,6 +141,7 @@ export function ResultsScreen({ analysis, onHome, onShowRecommendations }: Resul
 
           </div>
         )}
+        <RetakeTestButton onClick={onRestart} />
       </motion.div>
 
       {/* ── Stacked cards (545px column) ───────────────────────── */}

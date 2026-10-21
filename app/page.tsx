@@ -214,6 +214,22 @@ export default function VoraApp() {
     setStep('upload')
   }, [])
 
+  const restartQuiz = useCallback(() => {
+    analysisRun.current += 1
+    activeAnalyzer.current?.dispose()
+    activeAnalyzer.current = null
+    try { sessionStorage.removeItem(PROFILE_SESSION_KEY) } catch { /* restarting also works without storage */ }
+    setAnalysisResult(null)
+    setIsAnalysisComplete(false)
+    setLibraryFiles([])
+    setPhotoProgress(undefined)
+    setPhotoAssessments([])
+    setPhotoIssue(null)
+    setUploadBackStep('intro')
+    setProcessingReturnStep('upload')
+    setStep('intro')
+  }, [])
+
   return (
     <main className="min-h-screen bg-background">
       <MotionConfig reducedMotion="user">
@@ -357,7 +373,7 @@ export default function VoraApp() {
             {step === 'results' && analysisResult && (
               <ResultsScreen
                 analysis={analysisResult}
-                onHome={() => { window.location.href = '/' }}
+                onRestart={restartQuiz}
                 onShowRecommendations={() => setStep('recommendations')}
               />
             )}
@@ -366,6 +382,7 @@ export default function VoraApp() {
               <StyleRecommendationsScreen
                 analysis={analysisResult}
                 onBack={() => setStep('results')}
+                onRestart={restartQuiz}
               />
             )}
           </motion.div>
