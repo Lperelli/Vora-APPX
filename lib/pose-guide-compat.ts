@@ -3,13 +3,15 @@ import { POSE_MODEL_PATH, visionFileset } from './vision-assets'
 import { assessDetectedPoses, type LivePoseFrame } from './live-pose-guide'
 import type { PoseLandmarker } from '@mediapipe/tasks-vision'
 
-/** Safari path: an explicit DOM canvas and the live video, with no bitmap transfer. */
+/** Safari path: bounded DOM canvas frames, with no bitmap transfer. */
 export function createCompatibilityPoseGuide(
   options: { preferCPU?: boolean } = {}
 ) {
   let closed = false
   let detector: PoseLandmarker | null = null
   let canvas: HTMLCanvasElement | null = null
+  let frameCanvas: HTMLCanvasElement | null = null
+  let frameContext: CanvasRenderingContext2D | null = null
   let lastTimestamp = -1
   let rejectReady!: (error: Error) => void
   let resolveReady!: () => void
@@ -25,6 +27,9 @@ export function createCompatibilityPoseGuide(
       /* A lost context can already be closed. */
     }
     detector = null
+    if (frameCanvas) frameCanvas.width = frameCanvas.height = 1
+    frameCanvas = null
+    frameContext = null
     if (canvas) {
       // Release the explicit context, including when the model finishes after close.
       try {
@@ -116,10 +121,25 @@ export function createCompatibilityPoseGuide(
         throw new DOMException('Body guide closed', 'AbortError')
       if (video.readyState < 2 || !video.videoWidth || !video.videoHeight)
         throw new Error('Waiting for a live camera frame')
+      if (!frameCanvas) {
+        frameCanvas = document.createElement('canvas')
+        frameContext = frameCanvas.getContext('2d', { alpha: false })
+      }
+      if (!frameContext) throw new Error('Camera frame canvas unavailable')
+      // Keep the camera/review at its original resolution. Only live guidance
+      // uses a smaller, reusable frame to limit Safari texture/memory work.
+      const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight))
+      const width = Math.max(1, Math.round(video.videoWidth * scale))
+      const height = Math.max(1, Math.round(video.videoHeight * scale))
+      if (frameCanvas.width !== width || frameCanvas.height !== height) {
+        frameCanvas.width = width
+        frameCanvas.height = height
+      }
+      frameContext.drawImage(video, 0, 0, width, height)
       // VIDEO mode requires increasing timestamps, including after a camera interruption.
       lastTimestamp = Math.max(timestamp, lastTimestamp + 1)
-      const result = detector.detectForVideo(video, lastTimestamp)
-      return assessDetectedPoses(result.landmarks || [])
+      const result = detector.detectForVideo(frameCanvas, lastTimestamp)
+      return assessDetectedPoses(result.landmarks || [], video.videoWidth / video.videoHeight)
     },
   }
 }

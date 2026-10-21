@@ -9,6 +9,7 @@ interface ProcessingScreenProps {
   onComplete: () => void
   onReturn: () => void
   source?: 'photo' | 'measurement'
+  photoProgress?: { completed: number; total: number }
 }
 
 /** Figma 3075:151 → 3075:142 → 3075:133, driven by completed local analysis. */
@@ -17,6 +18,7 @@ export function ProcessingScreen({
   onComplete,
   onReturn,
   source = 'photo',
+  photoProgress,
 }: ProcessingScreenProps) {
   const [completedCount, setCompletedCount] = useState(1)
   const completeRef = useRef(onComplete)
@@ -46,6 +48,7 @@ export function ProcessingScreen({
   return (
     <ProcessingView
       completedCount={completedCount}
+      photoProgress={photoProgress}
       source={source}
       onReturn={onReturn}
     />
@@ -55,10 +58,12 @@ export function ProcessingScreen({
 export function ProcessingView({
   completedCount,
   source = 'photo',
+  photoProgress,
   onReturn,
 }: {
   completedCount: number
   source?: 'photo' | 'measurement'
+  photoProgress?: { completed: number; total: number }
   onReturn: () => void
 }) {
   const done = completedCount === 3
@@ -94,7 +99,11 @@ export function ProcessingView({
           aria-live="polite"
           className={`mt-[144px] text-center font-medium uppercase leading-5 tracking-[2px] ${done ? 'text-[12px]' : 'text-[10px]'}`}
         >
-          {done ? 'Got them!' : 'Loading results...'}
+          {done ? 'Got them!' : source === 'photo' && photoProgress
+            ? photoProgress.completed < photoProgress.total
+              ? `Checking photo ${photoProgress.completed + 1} of ${photoProgress.total}…`
+              : 'Preparing your photo check…'
+            : 'Loading results...'}
         </p>
       </section>
     </FigmaFlowShell>

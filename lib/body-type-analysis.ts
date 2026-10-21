@@ -52,6 +52,8 @@ export const BodyAnalysisSchema = z.object({
   /** Present when analysis used typed measurements + Groq copy. */
   measurementAiStyling: z.string().optional(),
   analysisSource: z.enum(['photo', 'measurement']).optional(),
+  /** Number of usable local photos; no image or landmark data is retained. */
+  photoCount: z.number().int().min(1).max(3).optional(),
 })
 
 export type BodyAnalysis = z.infer<typeof BodyAnalysisSchema>

@@ -8,6 +8,7 @@ export type PhotoIssue =
   | 'not_front_facing'
   | 'arms_obscured'
   | 'posture'
+  | 'not_standing'
   | 'inconsistent_photos'
   | 'no_body'
   | 'multiple_bodies'
@@ -18,11 +19,12 @@ export type PhotoIssue =
   | 'load_failed'
   | 'low_confidence'
 
-const MESSAGES: Record<PhotoIssue, string> = {
+export const PHOTO_ISSUE_MESSAGES: Record<PhotoIssue, string> = {
   not_front_facing: 'Turn towards the camera. A side view changes the proportions we can see.',
   arms_obscured: 'Relax your arms slightly away from your waist so we can see your torso clearly.',
+  not_standing: 'Choose a standing photo. A seated pose changes the proportions we can see.',
   posture: 'Stand upright and face forward with your weight balanced on both feet.',
-  inconsistent_photos: 'We couldn’t find two consistent, usable views in these photos. Try three clear front-facing photos, or use your measurements.',
+  inconsistent_photos: 'These photos suggest different proportions. Replace the angled or unclear views with standing, front-facing photos, or use your measurements.',
   no_body: "We couldn't find a full body in that photo. Try a clear, front-facing, head-to-toe shot.",
   multiple_bodies: 'There is more than one person in this photo. Take a photo with only you in the frame.',
   not_full_body: 'We need your whole body in frame, head to toe. Step back and try again.',
@@ -59,7 +61,7 @@ export function PhotoFallbackScreen({ issue, onRetryPhoto, onEnterMeasurements, 
           transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
         >
           <p className="mb-3 text-[10px] uppercase tracking-[0.38em] text-foreground/55">Let&apos;s refine this</p>
-          <p className="mb-9 text-[14px] leading-relaxed text-foreground/70">{MESSAGES[issue]}</p>
+          <p className="mb-9 text-[14px] leading-relaxed text-foreground/70">{PHOTO_ISSUE_MESSAGES[issue]}</p>
 
           <div className="mx-auto flex w-full max-w-sm flex-col gap-3">
             <motion.button

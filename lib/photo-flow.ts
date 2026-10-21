@@ -28,6 +28,7 @@ export type PhotoFailReason =
   | 'not_front_facing'
   | 'arms_obscured'
   | 'posture'
+  | 'not_standing'
   | 'no_body'
   | 'multiple_bodies'
   | 'not_full_body'
@@ -50,9 +51,14 @@ export function createPhotoAnalyzer() {
   let pending: Promise<
     import('@mediapipe/tasks-vision').PoseLandmarker
   > | null = null
+  let rejectInitialization: ((error: Error) => void) | null = null
   let canvas: HTMLCanvasElement | null = null
   const dispose = () => {
     closed = true
+    // Settle the caller now so it can release its decoded photo. A model
+    // download cannot be aborted here; the late-instance guard closes it.
+    rejectInitialization?.(new DOMException('Analysis closed', 'AbortError'))
+    rejectInitialization = null
     try {
       model?.close?.()
     } catch {
@@ -81,6 +87,7 @@ export function createPhotoAnalyzer() {
         const { FilesetResolver, PoseLandmarker } = await import(
           '@mediapipe/tasks-vision'
         )
+        if (closed) throw new DOMException('Analysis closed', 'AbortError')
         const fileset = visionFileset(await FilesetResolver.isSimdSupported())
         if (closed) throw new DOMException('Analysis closed', 'AbortError')
         for (const delegate of ['GPU', 'CPU'] as const) {
@@ -111,9 +118,10 @@ export function createPhotoAnalyzer() {
       pending = Promise.race([
         initialization,
         new Promise<never>((_, reject) => {
+          rejectInitialization = reject
           timeout = setTimeout(() => {
-            dispose()
             reject(new Error('Photo analysis download timed out'))
+            dispose()
           }, 45000)
         }),
       ])
@@ -121,7 +129,10 @@ export function createPhotoAnalyzer() {
           pending = null
           throw error
         })
-        .finally(() => clearTimeout(timeout))
+        .finally(() => {
+          clearTimeout(timeout)
+          rejectInitialization = null
+        })
     }
     return pending
   }
@@ -216,14 +227,14 @@ async function measureImage(file: File | Blob, getLandmarker: () => Promise<unkn
     const keyPoints = [lm[L_SHOULDER], lm[R_SHOULDER], lm[L_HIP], lm[R_HIP]]
     const visibility = avg(keyPoints.map((p) => p?.visibility ?? 0))
     if (keyPoints.some(point => !point || !Number.isFinite(point.y) || !Number.isFinite(point.x))) return { ok: false, widths: null, visibility: 0, reason: 'not_full_body' }
-    if (visibility < PHOTO_VISIBILITY.low) return { ok: false, widths: null, visibility, reason: 'low_visibility' }
+    if (visibility < PHOTO_VISIBILITY.low || keyPoints.some(point => (point.visibility ?? 0) < 0.6)) return { ok: false, widths: null, visibility, reason: 'low_visibility' }
     const nose = lm[0]
     const ankles = [lm[27], lm[28]]
-    if (!nose || !Number.isFinite(nose.y) || (nose.visibility ?? 0) < 0.4 || nose.y < 0.01 || ankles.some(point => !point || !Number.isFinite(point.y) || point.y > 0.99 || (point.visibility ?? 0) < 0.35)) {
+    if (!nose || !Number.isFinite(nose.y) || (nose.visibility ?? 0) < 0.4 || nose.y < 0.01 || ankles.some(point => !point || !Number.isFinite(point.y) || !Number.isFinite(point.x) || point.x <= 0 || point.x >= 1 || point.y <= 0 || point.y > 0.99 || (point.visibility ?? 0) < 0.35)) {
       return { ok: false, widths: null, visibility, reason: 'not_full_body' }
     }
 
-    const qualityIssue = poseQualityIssue(lm)
+    const qualityIssue = poseQualityIssue(lm, photo.image.width / photo.image.height)
     if (qualityIssue) return { ok: false, widths: null, visibility, reason: qualityIssue }
 
     const mask = result.segmentationMasks?.[0]

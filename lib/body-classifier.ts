@@ -6,9 +6,10 @@ import { THRESHOLDS as T, PROTOTYPES, PHOTO_VISIBILITY } from '@/lib/body-type-c
  * VORA — Single deterministic body-type classifier.
  *
  * Pure function: no DOM, no network, no randomness. Identical input always
- * yields identical output. Both the photo flow (silhouette widths in px) and
- * the manual flow (measurements in cm) call this exact function, so they can
- * never disagree. Portable as-is to a Webflow ES-module embed.
+ * yields identical output. Photo silhouette widths and typed circumferences
+ * currently share these styling rules, but they are different physical inputs
+ * and can produce different estimates for the same person. Photo ratios do not
+ * measure circumferences or provide calibrated anatomical accuracy.
  */
 
 export type Confidence = 'high' | 'medium' | 'low'

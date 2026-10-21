@@ -14,12 +14,14 @@ let detector: {
   close: ReturnType<typeof vi.fn>
   detectForVideo: ReturnType<typeof vi.fn>
 }
+let drawImage: ReturnType<typeof vi.fn>
 beforeEach(() => {
+  drawImage = vi.fn()
   vi.stubGlobal('document', {
     createElement: vi.fn(() => ({
       width: 1,
       height: 1,
-      getContext: vi.fn(() => null),
+      getContext: vi.fn((kind: string) => kind === '2d' ? { drawImage } : null),
     })),
   })
   detector = {
@@ -34,7 +36,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 describe('Safari video detector', () => {
-  it('uses an explicit DOM canvas and the video directly without bitmap APIs', async () => {
+  it('reuses a proportional frame buffer without changing capture resolution or using bitmap APIs', async () => {
     const guide = createCompatibilityPoseGuide()
     await guide.ready
     expect(model.create.mock.calls[0][1]).toMatchObject({
@@ -44,11 +46,31 @@ describe('Safari video detector', () => {
     })
     expect((await guide.detect(video, 100)).status).toBe('no_body')
     await guide.detect(video, 100)
-    expect(detector.detectForVideo).toHaveBeenNthCalledWith(1, video, 100)
-    expect(detector.detectForVideo).toHaveBeenNthCalledWith(2, video, 101)
+    const buffer = detector.detectForVideo.mock.calls[0][0]
+    expect(buffer).not.toBe(model.create.mock.calls[0][1].canvas)
+    expect(buffer).toMatchObject({ width: 480, height: 640 })
+    expect(drawImage).toHaveBeenCalledWith(video, 0, 0, 480, 640)
+    expect(detector.detectForVideo).toHaveBeenNthCalledWith(2, buffer, 101)
+    expect(video).toMatchObject({ videoWidth: 1080, videoHeight: 1440 })
     guide.dispose()
     guide.dispose()
     expect(detector.close).toHaveBeenCalledOnce()
+    expect(buffer).toMatchObject({ width: 1, height: 1 })
+  })
+  it('adjusts its buffer when the camera rotates and never upscales a small source', async () => {
+    const guide = createCompatibilityPoseGuide()
+    await guide.ready
+    await guide.detect(video, 100)
+    const buffer = detector.detectForVideo.mock.calls[0][0]
+    const landscape = { ...video, videoWidth: 1920, videoHeight: 1080 } as HTMLVideoElement
+    await guide.detect(landscape, 200)
+    expect(buffer).toMatchObject({ width: 640, height: 360 })
+    expect(drawImage).toHaveBeenLastCalledWith(landscape, 0, 0, 640, 360)
+    const small = { ...video, videoWidth: 320, videoHeight: 240 } as HTMLVideoElement
+    await guide.detect(small, 300)
+    expect(buffer).toMatchObject({ width: 320, height: 240 })
+    expect(document.createElement).toHaveBeenCalledTimes(2)
+    guide.dispose()
   })
   it('falls back to CPU when GPU setup fails', async () => {
     model.create
