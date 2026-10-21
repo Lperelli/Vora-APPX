@@ -10,6 +10,7 @@ import { VoraLogo } from './vora-logo'
 import { VoraScreenHeader } from './screen-return-button'
 import { VORA_RECOMMENDATIONS_MAX, VORA_RESULTS_MAX } from './vora-layout'
 import { asset } from '@/lib/base-path'
+import { RetakeTestButton } from './retake-test-button'
 
 // The source files include baked-in side padding. Crop only that padding,
 // preserving each garment's full height and original proportions.
@@ -22,13 +23,14 @@ function productImageAspect(image: string) {
 interface StyleRecommendationsScreenProps {
   analysis: BodyAnalysis
   onBack: () => void
+  onRestart: () => void
 }
 
 /**
  * Figma 327:423 — editorial "Your top 5 must haves" page reached from the
  * "Unveil style recommendations" CTA. Curated product cards per body type.
  */
-export function StyleRecommendationsScreen({ analysis, onBack }: StyleRecommendationsScreenProps) {
+export function StyleRecommendationsScreen({ analysis, onBack, onRestart }: StyleRecommendationsScreenProps) {
   const prefersReducedMotion = useReducedMotion()
   const label = analysis.bodyTypeLabel
   const products = analysis.styleProducts ?? []
@@ -42,7 +44,7 @@ export function StyleRecommendationsScreen({ analysis, onBack }: StyleRecommenda
 
   return (
     <motion.div
-      className="flex min-h-[100dvh] flex-col items-stretch overflow-x-hidden bg-background px-3 pb-32 pt-0 sm:px-6 sm:pb-28"
+      className="flex min-h-[100dvh] flex-col items-stretch overflow-x-hidden bg-background px-3 pb-44 pt-0 sm:px-6 sm:pb-40"
       initial={prefersReducedMotion ? false : { opacity: 0 }}
       animate={prefersReducedMotion ? undefined : { opacity: 1 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
@@ -188,7 +190,7 @@ export function StyleRecommendationsScreen({ analysis, onBack }: StyleRecommenda
         animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
       >
-        <div className={`flex ${VORA_RESULTS_MAX}`}>
+        <div className={`flex flex-col ${VORA_RESULTS_MAX}`}>
           <motion.button
             type="button"
             onClick={onBack}
@@ -198,6 +200,7 @@ export function StyleRecommendationsScreen({ analysis, onBack }: StyleRecommenda
           >
             Back to my profile
           </motion.button>
+          <RetakeTestButton onClick={onRestart} />
         </div>
       </motion.div>
     </motion.div>
