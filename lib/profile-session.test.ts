@@ -14,6 +14,13 @@ describe('private session continuity', () => {
     expect(decodeProfile(encoded, now + 100)?.analysis.analysisSource).toBe('photo')
     expect(decodeProfile(encoded, now + 100)?.view).toBe('recommendations')
   })
+  it('retains the number of usable photos without retaining the photos themselves', () => {
+    const encoded = encodeProfile({ ...analysis, photoCount: 1 }, 'results', now)
+    expect(decodeProfile(encoded, now)?.analysis.photoCount).toBe(1)
+    for (const photoCount of [0, 4, 1.5, '1']) {
+      expect(decodeProfile(JSON.stringify({ ...JSON.parse(encoded), photoCount }), now)).toBeNull()
+    }
+  })
   it('ignores expired, future, malformed or unsupported profiles', () => {
     expect(decodeProfile(encodeProfile(analysis, 'results', now), now + PROFILE_TTL_MS + 1)).toBeNull()
     expect(decodeProfile(encodeProfile(analysis, 'results', now + 1), now)).toBeNull()

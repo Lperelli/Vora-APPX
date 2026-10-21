@@ -4,14 +4,15 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'framer-motion'
 import { IntroScreen } from '@/components/vora/intro-screen'
 import { LiveCameraScreen } from '@/components/vora/live-camera-screen'
-import { classifyPhotoSession } from '@/lib/photo-session'
+import { assessPhotoSession } from '@/lib/photo-session'
+import { PhotoReviewScreen } from '@/components/vora/photo-review-screen'
 import { PhotoUploadScreen } from '@/components/vora/photo-upload-screen'
 import { MeasurementsQuizScreen } from '@/components/vora/measurements-quiz-screen'
 import { ProcessingScreen } from '@/components/vora/processing-screen'
 import { ResultsScreen } from '@/components/vora/results-screen'
 import { StyleRecommendationsScreen } from '@/components/vora/style-recommendations-screen'
 import { EmailGateScreen } from '@/components/vora/email-gate-screen'
-import { PhotoFallbackScreen, type PhotoIssue } from '@/components/vora/photo-fallback-screen'
+import { PhotoFallbackScreen, PHOTO_ISSUE_MESSAGES, type PhotoIssue } from '@/components/vora/photo-fallback-screen'
 import { VoraLogo } from '@/components/vora/vora-logo'
 import { type BodyAnalysis, buildAnalysisFromBodyType } from '@/lib/body-type-analysis'
 import { analyzeMeasurements, buildAnalysisFromClassification, type ManualMeasurements } from '@/lib/analyze'
@@ -24,6 +25,7 @@ type Step =
   | 'camera'
   | 'upload'     // Screen 4: photo upload
   | 'processing' // Screen 5: analyzing animation
+  | 'photoReview'
   | 'photoFallback' // Photo unusable → retry or manual
   | 'emailGate'  // Capture email before unlocking results
   | 'results'    // Screen 6: body type results
@@ -43,6 +45,10 @@ export default function VoraApp() {
   const [isAnalysisComplete, setIsAnalysisComplete] = useState(false)
   const [libraryFiles, setLibraryFiles] = useState<File[]>([])
   const analysisRun = useRef(0)
+  const activeAnalyzer = useRef<ReturnType<typeof createPhotoAnalyzer> | null>(null)
+  const [photoProgress, setPhotoProgress] = useState<{ completed: number; total: number }>()
+  const [photoAssessments, setPhotoAssessments] = useState<Array<{index: number; status: 'used' | 'excluded' | 'conflict'; reason?: string}>>([])
+  useEffect(() => () => { analysisRun.current += 1; activeAnalyzer.current?.dispose() }, [])
   const [photoIssue, setPhotoIssue] = useState<PhotoIssue | null>(null)
   const [emailProvided, setEmailProvided] = useState(false)
   const prefersReducedMotion = useReducedMotion()
@@ -109,45 +115,58 @@ export default function VoraApp() {
     async (files: File[], source: 'camera' | 'library') => {
       if (files.length !== (source === 'camera' ? 1 : 3)) return
       const run = ++analysisRun.current
+      activeAnalyzer.current?.dispose()
       setProcessingReturnStep(source === 'camera' ? 'camera' : 'upload')
       setStep('processing')
       setIsAnalysisComplete(false)
+      setAnalysisResult(null)
       setPhotoIssue(null)
+      setPhotoAssessments([])
+      setPhotoProgress({ completed: 0, total: files.length })
 
       const started = now()
       const photoAnalyzer = createPhotoAnalyzer()
+      activeAnalyzer.current = photoAnalyzer
       try {
-        const validWidths: NonNullable<PhotoMeasureResult['widths']>[] = []
-        let lastReason: PhotoIssue = 'no_body'
-
-        for (const file of files) {
-          const measured = await photoAnalyzer.measure(file)
+        const measuredPhotos: Array<{index: number; measured: PhotoMeasureResult}> = []
+        for (let index = 0; index < files.length; index++) {
+          const measured = await photoAnalyzer.measure(files[index])
           if (run !== analysisRun.current) return
-          if (measured.ok && measured.widths) {
-            validWidths.push(measured.widths)
-            continue
+          measuredPhotos.push({ index, measured })
+          setPhotoProgress({ completed: index + 1, total: files.length })
+          // Initialization failure affects the whole session; do not download the model three times.
+          if (measured.reason === 'load_failed') {
+            for (let remaining = index + 1; remaining < files.length; remaining++) {
+              measuredPhotos.push({ index: remaining, measured })
+            }
+            break
           }
-          if (measured.reason) lastReason = measured.reason
         }
-
         await waitRemaining(started)
         if (run !== analysisRun.current) return
 
-        if (validWidths.length === 0) {
-          setPhotoIssue(lastReason)
-          setStep('photoFallback')
-          return
+        const candidates = measuredPhotos.flatMap(({ index, measured }) =>
+          measured.ok && measured.widths ? [{ index, widths: measured.widths }] : [])
+        const session = assessPhotoSession(candidates, source)
+        const assessments = measuredPhotos.map(({index, measured}) => ({
+          index,
+          status: (!measured.ok ? 'excluded' : session.ok ? session.usedIndices.includes(index) ? 'used' : 'excluded' : 'conflict') as 'used' | 'excluded' | 'conflict',
+          reason: measured.ok
+            ? session.ok && session.usedIndices.includes(index) ? 'Clear enough for an estimated style profile.' : 'This view suggests different proportions. Try a straight-on, standing photo.'
+            : PHOTO_ISSUE_MESSAGES[measured.reason ?? 'no_body'],
+        }))
+        if (source === 'library') setPhotoAssessments(assessments)
+        if (session.ok) {
+          setAnalysisResult({ ...buildAnalysisFromClassification(session.classification, 'photo'), photoCount: session.usedPhotoCount })
         }
-
-        const result = classifyPhotoSession(validWidths, source)
-        if (!result) {
-          setPhotoIssue('inconsistent_photos')
+        if (source === 'library') {
+          setStep('photoReview')
+        } else if (session.ok) {
+          setIsAnalysisComplete(true)
+        } else {
+          setPhotoIssue(measuredPhotos[0]?.measured.reason ?? 'inconsistent_photos')
           setStep('photoFallback')
-          return
         }
-
-        setAnalysisResult(buildAnalysisFromClassification(result, 'photo'))
-        setIsAnalysisComplete(true)
       } catch (error) {
         if (run !== analysisRun.current) return
         console.error('[vora] photo analysis failed:', error instanceof Error ? error.message : error)
@@ -157,6 +176,7 @@ export default function VoraApp() {
         setStep('photoFallback')
       } finally {
         photoAnalyzer.dispose()
+        if (activeAnalyzer.current === photoAnalyzer) activeAnalyzer.current = null
       }
     },
     [waitRemaining]
@@ -278,15 +298,34 @@ export default function VoraApp() {
             {step === 'camera' && <LiveCameraScreen onSubmit={files => void handleAnalyze(files, 'camera')} onBack={() => setStep('intro')} onUseLibrary={() => goToUpload('intro')} onUseMeasurements={() => setStep('measurements')} />}
 
             {step === 'upload' && (
-              <PhotoUploadScreen files={libraryFiles} onFilesChange={setLibraryFiles} onTakePhoto={() => setStep('camera')} onSubmit={files => void handleAnalyze(files, 'library')} onBack={() => setStep(uploadBackStep)} />
+              <PhotoUploadScreen files={libraryFiles} feedback={photoAssessments.map(item => ({ index: item.index, message: item.reason ?? '' }))} onFilesChange={files => {
+                setPhotoAssessments(current => current.filter(item => files[item.index] === libraryFiles[item.index]))
+                setLibraryFiles(files)
+              }} onTakePhoto={() => setStep('camera')} onSubmit={files => void handleAnalyze(files, 'library')} onBack={() => setStep(uploadBackStep)} />
+            )}
+
+            {step === 'photoReview' && (
+              <PhotoReviewScreen
+                files={libraryFiles}
+                assessments={photoAssessments}
+                usableCount={analysisResult?.photoCount ?? 0}
+                canContinue={Boolean(analysisResult)}
+                onContinue={() => { if (analysisResult) setStep(emailProvided ? 'results' : 'emailGate') }}
+                onRetry={() => setStep('upload')}
+                onBack={() => setStep('upload')}
+                onEnterMeasurements={() => setStep('measurements')}
+              />
             )}
 
             {step === 'processing' && (
               <ProcessingScreen
                 isComplete={isAnalysisComplete}
+                photoProgress={photoProgress}
                 source={processingReturnStep === 'measurements' ? 'measurement' : 'photo'}
                 onReturn={() => {
                   analysisRun.current += 1
+                  activeAnalyzer.current?.dispose()
+                  activeAnalyzer.current = null
                   setIsAnalysisComplete(false)
                   setStep(processingReturnStep)
                 }}
@@ -311,7 +350,7 @@ export default function VoraApp() {
                   setEmailProvided(true)
                   setStep('results')
                 }}
-                onBack={() => setStep(processingReturnStep)}
+                onBack={() => setStep(processingReturnStep === 'upload' && photoAssessments.length ? 'photoReview' : processingReturnStep)}
               />
             )}
 

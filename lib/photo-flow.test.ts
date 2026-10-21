@@ -18,7 +18,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 function fixture() {
   const bitmap = { close: vi.fn() }
-  prepare.mockResolvedValue({ image: {}, dispose: bitmap.close })
+  prepare.mockResolvedValue({ image: {width: 100, height: 100}, dispose: bitmap.close })
   const points = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0.95, z: 0 }))
   points[0].y = 0.08
   points[11].y = points[12].y = 0.25
@@ -26,6 +26,9 @@ function fixture() {
   points[11].x = points[23].x = 0.4
   points[12].x = points[24].x = 0.6
   points[15].x = 0.25; points[16].x = 0.75
+  points[25].y = points[26].y = 0.74
+  points[25].x = points[27].x = 0.4
+  points[26].x = points[28].x = 0.6
   points[27].y = points[28].y = 0.92
   const mask = { width: 100, height: 100, close: vi.fn(), getAsFloat32Array: vi.fn(() => {
     const values = new Float32Array(10000)
@@ -120,6 +123,17 @@ describe('single-photo analysis resources', () => {
 })
 
 describe('photo pose quality',()=>{
+ it('rejects one unreliable torso landmark even if the average is high', async()=>{
+  const data=fixture();data.points[11].visibility=0.3;model.detect.mockReturnValue(data.result)
+  const {measureFromImage}=await import('./photo-flow')
+  expect((await measureFromImage(new Blob())).reason).toBe('low_visibility')
+  expect(data.mask.close).toHaveBeenCalledOnce()
+ })
+ it('rejects feet outside the horizontal frame', async()=>{
+  const data=fixture();data.points[27].x=1.1;model.detect.mockReturnValue(data.result)
+  const {measureFromImage}=await import('./photo-flow')
+  expect((await measureFromImage(new Blob())).reason).toBe('not_full_body')
+ })
  it('rejects a marked side view before interpreting its silhouette',async()=>{
   const data=fixture();data.points[12].z=0.5;data.points[24].z=0.5;model.detect.mockReturnValue(data.result)
   const {measureFromImage}=await import('./photo-flow')
@@ -186,16 +200,30 @@ describe('photo analysis sessions', () => {
     expect((await measureFromImage(new Blob())).reason).toBe('no_body')
     expect(close).toHaveBeenCalledOnce()
   })
-  it('closes a model that finishes loading after its session was cancelled', async () => {
-    fixture()
-    let finish!: (value: unknown) => void
-    const close = vi.fn()
-    model.create.mockImplementation(() => new Promise(resolve => { finish = resolve }))
-    const { createPhotoAnalyzer } = await import('./photo-flow')
-    const analyzer = createPhotoAnalyzer(), result = analyzer.measure(new Blob())
-    await vi.waitFor(() => expect(model.create).toHaveBeenCalledOnce())
-    analyzer.dispose(); finish({ close, detect: model.detect })
-    expect((await result).reason).toBe('load_failed')
-    expect(close).toHaveBeenCalledOnce()
+  it('releases the photo immediately on cancellation, then closes a model that arrives later', async () => {
+    vi.useFakeTimers()
+    try {
+      const data = fixture()
+      let finish!: (value: unknown) => void
+      const close = vi.fn()
+      model.create.mockImplementation(() => new Promise(resolve => { finish = resolve }))
+      const { createPhotoAnalyzer } = await import('./photo-flow')
+      const analyzer = createPhotoAnalyzer(), result = analyzer.measure(new Blob())
+      await vi.waitFor(() => expect(model.create).toHaveBeenCalledOnce())
+      const modelCanvas = model.create.mock.calls[0][1].canvas
+      analyzer.dispose()
+      // No model resolution or 45-second timeout is needed to free the photo.
+      expect((await result).reason).toBe('load_failed')
+      expect(data.bitmap.close).toHaveBeenCalledOnce()
+      expect(modelCanvas).toMatchObject({ width: 1, height: 1 })
+      expect(vi.getTimerCount()).toBe(0)
+      expect(model.detect).not.toHaveBeenCalled()
+      finish({ close, detect: model.detect })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(close).toHaveBeenCalledOnce()
+      expect(data.bitmap.close).toHaveBeenCalledOnce()
+      analyzer.dispose()
+      expect(close).toHaveBeenCalledOnce()
+    } finally { vi.useRealTimers() }
   })
 })

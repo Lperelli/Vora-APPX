@@ -12,14 +12,18 @@ export function PhotoUploadScreen({
   onSubmit,
   onBack,
   onTakePhoto,
+  feedback = [],
 }: {
   files: File[]
   onFilesChange: (files: File[]) => void
   onSubmit: (files: File[]) => void
   onBack: () => void
   onTakePhoto: () => void
+  feedback?: Array<{ index: number; message: string }>
 }) {
   const input = useRef<HTMLInputElement>(null)
+  const replacementInput = useRef<HTMLInputElement>(null)
+  const replacementIndex = useRef<number | null>(null)
   const [previews, setPreviews] = useState<string[]>([])
   const [choosing, setChoosing] = useState(files.length > 0)
   const [message, setMessage] = useState('')
@@ -60,6 +64,25 @@ export function PhotoUploadScreen({
     )
     onFilesChange(next.slice(0, 3))
   }
+  const replacePhoto = (file: File | undefined) => {
+    const index = replacementIndex.current
+    replacementIndex.current = null
+    if (!file || index === null) return
+    if (!file.type.startsWith('image/')) {
+      setMessage('Choose an image file.')
+      return
+    }
+    if (files.some((other, otherIndex) =>
+      otherIndex !== index && other.name === file.name && other.size === file.size && other.lastModified === file.lastModified
+    )) {
+      setMessage('That photo is already selected. Choose a different one.')
+      return
+    }
+    const next = [...files]
+    next[index] = file
+    setMessage('')
+    onFilesChange(next)
+  }
 
   return (
     <FigmaFlowShell
@@ -69,6 +92,16 @@ export function PhotoUploadScreen({
       <section
         className={`mx-auto w-full max-w-[562px] px-6 ${choosing && !reviewing ? 'pt-0' : 'pt-6 md:pt-[51px]'}`}
       >
+        <input
+          ref={replacementInput}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(event) => {
+            replacePhoto(event.target.files?.[0])
+            event.target.value = ''
+          }}
+        />
         <input
           ref={input}
           type="file"
@@ -91,8 +124,9 @@ export function PhotoUploadScreen({
           {[0, 1, 2].map((index) => (
             <div
               key={index}
-              className="relative aspect-[115/165] w-[115px] min-w-0 shrink rounded-[4px] border border-dashed border-white/35"
+              className="w-[115px] min-w-0 shrink"
             >
+              <div className="relative aspect-[115/165] rounded-[4px] border border-dashed border-white/35">
               {files[index] && previews[index] ? (
                 <>
                   <Image
@@ -104,6 +138,7 @@ export function PhotoUploadScreen({
                     className="rounded-[2px] object-contain"
                   />
                   <button
+                    type="button"
                     onClick={() =>
                       onFilesChange(files.filter((_, i) => i !== index))
                     }
@@ -123,6 +158,7 @@ export function PhotoUploadScreen({
                 </>
               ) : (
                 <button
+                  type="button"
                   onClick={choosePhotos}
                   aria-label={`Add library photo ${index + 1}`}
                   className="group flex h-full w-full flex-col items-center justify-center gap-4 rounded-[3px] text-[10px] font-medium uppercase leading-5 tracking-[2px] transition-colors hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
@@ -132,6 +168,26 @@ export function PhotoUploadScreen({
                   </span>
                   <span className="text-white/65">Photo 0{index + 1}</span>
                 </button>
+              )}
+              </div>
+              {files[index] && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    replacementIndex.current = index
+                    replacementInput.current?.click()
+                  }}
+                  aria-label={`Replace photo ${index + 1}`}
+                  aria-describedby={feedback.some((item) => item.index === index) ? `photo-feedback-${index}` : undefined}
+                  className="mt-1 min-h-11 w-full rounded-[3px] text-[10px] font-medium uppercase leading-5 tracking-[1px] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  Replace
+                </button>
+              )}
+              {feedback.find((item) => item.index === index)?.message && (
+                <p id={`photo-feedback-${index}`} className="mt-1 text-center text-[11px] leading-[17px] text-[#ababab]">
+                  {feedback.find((item) => item.index === index)?.message}
+                </p>
               )}
             </div>
           ))}
@@ -148,8 +204,11 @@ export function PhotoUploadScreen({
           >
             <p>
               {reviewing
-                ? 'Your three full-body photos are ready. Make sure your head, feet and torso are visible and your clothes let us see your shape.'
-                : 'Upload 3 full-body photos from your library. Pictures where you are wearing tighter clothes will work the best for us. Avoid pictures where you have loose clothes.'}
+                ? 'Check that all three photos show you standing and facing the camera, from head to toe. Fitted clothes and arms slightly away from your waist help us see your proportions.'
+                : 'Choose 3 front-facing, full-body photos from your library. Stand upright with your head and feet visible. Fitted clothes and arms slightly away from your waist work best.'}
+            </p>
+            <p className="mt-2 text-[12px] leading-5 text-[#ababab]">
+              Avoid seated poses, side or back views, loose clothing and collages. Only you should be in each photo.
             </p>
             <p className={reviewing ? 'mt-[26px]' : ''}>
               <button

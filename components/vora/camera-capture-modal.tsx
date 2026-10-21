@@ -51,8 +51,9 @@ const GUIDE_COPY: Record<LivePoseStatus, string> = {
   too_far: 'Move a little closer',
   off_center: 'Move towards the centre',
   posture: 'Face the camera and stand naturally',
-  ready: 'Good framing. Hold your position.',
+  ready: 'Framing ready. Hold your position.',
   not_front_facing: 'Turn to face the camera',
+  not_standing: 'Stand up with both feet on the floor',
   arms_obscured: 'Move your arms slightly away from your waist',
   hold_still: 'Hold still for a moment',
   unavailable: 'Body guide unavailable · you can still take a photo',
@@ -116,6 +117,8 @@ export function CameraCaptureModal({
   const [seconds, setSeconds] = useState(10)
   const captureRef = useRef(onCapture)
   captureRef.current = onCapture
+  const capturingRef = useRef(capturing)
+  capturingRef.current = capturing
   const dialog = usePhotoDialog(onClose)
   const reducedMotion = useReducedMotion()
 
@@ -143,7 +146,6 @@ export function CameraCaptureModal({
       phase !== 'preview' ||
       !videoReady ||
       switching ||
-      capturing ||
       !showGuide
     )
       return
@@ -163,6 +165,12 @@ export function CameraCaptureModal({
     }
     const update = async () => {
       if (!active || !guide) return
+      // Pause the loop during encoding without discarding its loaded model.
+      // If capture fails, guidance resumes in the same camera session.
+      if (capturingRef.current) {
+        timer = setTimeout(() => void update(), 80)
+        return
+      }
       const started = performance.now()
       try {
         if (
@@ -221,7 +229,6 @@ export function CameraCaptureModal({
     phase,
     videoReady,
     switching,
-    capturing,
     showGuide,
     guideAttempt,
     facingMode,

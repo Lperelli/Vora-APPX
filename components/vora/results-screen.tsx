@@ -133,6 +133,7 @@ export function ResultsScreen({ analysis, onHome, onShowRecommendations }: Resul
         </p>
         {analysis.analysisSource === 'photo' && (
           <div className="mx-auto max-w-[420px] px-3 text-[12px] leading-relaxed text-foreground/60">
+            {analysis.photoCount && <p className="mb-2">Based on {analysis.photoCount} usable {analysis.photoCount === 1 ? 'photo' : 'photos'}.</p>}
             <p>{analysis.confidence === 'low'
               ? 'This is a starting point: your photo could fit more than one silhouette. Use these ideas as inspiration, not a definitive label.'
               : 'A photo gives an estimate of your shape, not exact body measurements.'}</p>

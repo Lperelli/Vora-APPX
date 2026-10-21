@@ -10,6 +10,7 @@ export type LivePoseStatus =
   | 'off_center'
   | 'posture'
   | 'not_front_facing'
+  | 'not_standing'
   | 'arms_obscured'
   | 'hold_still'
   | 'ready'
@@ -44,16 +45,18 @@ function visibility(point: { visibility?: number } | undefined) {
 }
 
 export function assessDetectedPoses(
-  poses: Array<Array<{ x: number; y: number; z?: number; visibility?: number }>>
+  poses: Array<Array<{ x: number; y: number; z?: number; visibility?: number }>>,
+  aspectRatio = 1
 ): LivePoseFrame {
   if (poses.length > 1)
     return { status: 'multiple_bodies', points: [], alignment: 0 }
-  return assessLivePose(poses[0] || [])
+  return assessLivePose(poses[0] || [], aspectRatio)
 }
 
 /** Framing hints only; they never decide whether the shutter is available. */
 export function assessLivePose(
-  landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }>
+  landmarks: Array<{ x: number; y: number; z?: number; visibility?: number }>,
+  aspectRatio = 1
 ): LivePoseFrame {
   if (
     landmarks.length < 29 ||
@@ -109,7 +112,7 @@ export function assessLivePose(
   if (shoulderTilt > 0.055 || hipTilt > 0.06)
     return { status: 'posture', points, alignment: 0.78 }
 
-  const issue = poseQualityIssue(points)
+  const issue = poseQualityIssue(points, aspectRatio)
   if (issue) return { status: issue, points, alignment: 0.65 }
 
   const alignment = Math.max(

@@ -24,10 +24,10 @@ export function createWorkerPoseGuide() {
   }
   let closed = false
   let initialised = false
-  let creatingFrame = false
   let nextId = 0
   let pending: {
     id: number
+    aspectRatio: number
     resolve: (frame: LivePoseFrame) => void
     reject: (error: Error) => void
     timer: ReturnType<typeof setTimeout>
@@ -84,7 +84,10 @@ export function createWorkerPoseGuide() {
       const request = pending
       pending = null
       request.resolve(
-        assessDetectedPoses(Array.isArray(data.landmarks) ? data.landmarks : [])
+        assessDetectedPoses(
+          Array.isArray(data.landmarks) ? data.landmarks : [],
+          request.aspectRatio
+        )
       )
     }
   }
@@ -107,55 +110,59 @@ export function createWorkerPoseGuide() {
     ): Promise<LivePoseFrame> {
       if (closed || !initialised)
         throw new DOMException('Body guide closed', 'AbortError')
-      if (pending || creatingFrame) throw new Error('Frame already pending')
-      creatingFrame = true
-      let bitmap: ImageBitmap | undefined
-      try {
-        const scale = Math.min(
-          1,
-          640 / Math.max(video.videoWidth, video.videoHeight)
-        )
-        try {
-          bitmap = await createImageBitmap(video, {
-            resizeWidth: Math.max(1, Math.round(video.videoWidth * scale)),
-            resizeHeight: Math.max(1, Math.round(video.videoHeight * scale)),
-          })
-        } catch (error) {
-          if (
-            closed ||
-            !(
-              error instanceof TypeError ||
-              (error instanceof DOMException &&
-                error.name === 'NotSupportedError')
-            )
-          )
-            throw error
-          bitmap = await createImageBitmap(video)
+      if (pending) throw new Error('Frame already pending')
+      if (video.readyState < 2 || !video.videoWidth || !video.videoHeight)
+        throw new Error('Waiting for a live camera frame')
+      const id = ++nextId
+      return new Promise<LivePoseFrame>((resolve, reject) => {
+        // The deadline includes bitmap preparation, which can stall before the
+        // worker ever receives a frame. Closing the guide also rejects this wait.
+        const request = {
+          id,
+          aspectRatio: video.videoWidth / video.videoHeight,
+          resolve,
+          reject,
+          timer: setTimeout(() => fail(new Error('Frame timed out')), 4000),
         }
-        if (closed) throw new DOMException('Body guide closed', 'AbortError')
-        const id = ++nextId
-        return await new Promise<LivePoseFrame>((resolve, reject) => {
-          pending = {
-            id,
-            resolve,
-            reject,
-            timer: setTimeout(() => fail(new Error('Frame timed out')), 4000),
-          }
+        pending = request
+        void (async () => {
+          let bitmap: ImageBitmap | undefined
           try {
-            worker.postMessage({ type: 'frame', id, bitmap, timestamp }, [
-              bitmap!,
-            ])
+            const scale = Math.min(
+              1,
+              640 / Math.max(video.videoWidth, video.videoHeight)
+            )
+            try {
+              bitmap = await createImageBitmap(video, {
+                resizeWidth: Math.max(1, Math.round(video.videoWidth * scale)),
+                resizeHeight: Math.max(1, Math.round(video.videoHeight * scale)),
+              })
+            } catch (error) {
+              if (
+                closed ||
+                pending !== request ||
+                !(
+                  error instanceof TypeError ||
+                  (error instanceof DOMException &&
+                    error.name === 'NotSupportedError')
+                )
+              )
+                throw error
+              bitmap = await createImageBitmap(video)
+            }
+            if (closed || pending !== request) return
+            worker.postMessage({ type: 'frame', id, bitmap, timestamp }, [bitmap])
             bitmap = undefined
           } catch {
+            if (!closed && pending === request)
+              fail(new Error('Body guide unavailable'))
+          } finally {
+            // A browser bitmap promise cannot be aborted. Release late results
+            // after timeout/disposal instead of transferring to a dead worker.
             bitmap?.close()
-            bitmap = undefined
-            fail(new Error('Body guide unavailable'))
           }
-        })
-      } finally {
-        bitmap?.close()
-        creatingFrame = false
-      }
+        })()
+      })
     },
   }
 }

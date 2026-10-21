@@ -18,7 +18,10 @@ function pose() {
   points[24] = { x: 0.6, y: 0.53, visibility: 0.95 }
   points[15] = { x: 0.28, y: 0.62, visibility: 0.95 }
   points[16] = { x: 0.72, y: 0.62, visibility: 0.95 }
-  points[27].y = points[28].y = 0.92
+  points[25] = { x: 0.4, y: 0.73, visibility: 0.95 }
+  points[26] = { x: 0.6, y: 0.73, visibility: 0.95 }
+  points[27] = { x: 0.4, y: 0.92, visibility: 0.95 }
+  points[28] = { x: 0.6, y: 0.92, visibility: 0.95 }
   return points
 }
 describe('optional body framing', () => {
@@ -52,6 +55,19 @@ describe('optional body framing', () => {
       assessLivePose(pose().map((point) => ({ ...point, x: point.x + 0.3 })))
         .status
     ).toBe('off_center')
+  })
+  it('warns about a seated pose while the person is still fully inside the frame', () => {
+    const seated = pose()
+    seated[25] = { x: 0.68, y: 0.55, visibility: 0.95 }
+    seated[26] = { x: 0.8, y: 0.55, visibility: 0.95 }
+    seated[27] = { x: 0.68, y: 0.8, visibility: 0.95 }
+    seated[28] = { x: 0.8, y: 0.8, visibility: 0.95 }
+    expect(assessDetectedPoses([seated], 0.75).status).toBe('not_standing')
+  })
+  it('does not give a ready cue when a torso landmark is unreliable', () => {
+    const points = pose()
+    points[11].visibility = 0.45
+    expect(assessLivePose(points).status).toBe('low_visibility')
   })
 })
 
